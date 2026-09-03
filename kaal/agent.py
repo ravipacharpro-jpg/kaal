@@ -1,10 +1,11 @@
-"""Kaal ReAct loop — plan -> act -> observe, summary only, no code dump."""
-from .models.router import select_endpoint
+"""Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
+from .models.router import select_endpoint, track_usage, budget_status
 from .skills import files as _files
 from .skills import code as _code
 from .skills import browser as _browser
 from .mcp import github as _gh, registry as _mcp
 from .memory import store as _mem
+from .agents.orchestrator import decompose
 
 SENSITIVE = ("delete", "rm ", "format", "password", "token", "key")
 
@@ -48,25 +49,38 @@ def _dispatch(step, live_cb, ask_cb):
     if live_cb: live_cb(f"abhi ye kar raha hu: {step[:50]}")
     return f"✓ {step[:80]}"
 
-def run_task(task, live_cb=None, ask_cb=None):
-    """Ek task chalao. live_cb(line) = 1-line live update. Code dump nahi."""
+def run_task(task, live_cb=None, ask_cb=None, multi=None):
+    """Ek task chalao. multi=True force multi-agent. live_cb = 1-line Hindi update."""
     ep = select_endpoint()
-    todos = plan_task(task)
+    jobs = decompose(task)
+    use_multi = multi if multi is not None else len(jobs) > 1
+    todos = [{"title": j["step"], "status": "pending", "agent": j["agent"]} for j in jobs]
     if needs_permission(task) and ask_cb and not ask_cb(f"Sensitive lag raha hai: {task[:80]} — aage badhu?"):
-        return {"status": "denied", "summary": "User ne permission deny ki", "todos": todos, "endpoint": ep["name"]}
+        return {"status": "denied", "summary": "User ne permission deny ki",
+                "todos": todos, "endpoint": ep["name"], "mode": "single"}
     out = []
     for i, td in enumerate(todos):
         td["status"] = "doing"
-        res = _dispatch(td["title"], live_cb, ask_cb)
+        if live_cb and use_multi:
+            live_cb(f"[{td['agent']}] abhi ye kar raha hu: {td['title'][:45]}")
+        res = _dispatch(td["title"], live_cb if not use_multi else None, ask_cb)
+        if use_multi and live_cb:
+            pass  # live already shown with agent tag
         if res == "Delete cancel — permission deny":
             td["status"] = "pending"
             out.append("✗ delete cancel")
             break
         td["status"] = "done"
         td["result"] = res[:200]
-        out.append(f"✓ {td['title'][:50]}: {res[:100]}")
+        out.append(f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
     _mcp.unload_idle(0)
-    try: _mem.save(task, " | ".join(out)[:400])
-    except Exception: pass
+    try:
+        track_usage(ep["name"], 100 * max(1, len(todos)))
+        _mem.save(task, " | ".join(out)[:400])
+    except Exception:
+        pass
+    b = budget_status()
     return {"status": "done", "summary": " | ".join(out)[:300],
-            "todos": todos, "endpoint": ep["name"]}
+            "todos": todos, "endpoint": ep["name"],
+            "mode": "multi" if use_multi else "single",
+            "budget": f"{b['used']}/5000 ({b['mode']})"}

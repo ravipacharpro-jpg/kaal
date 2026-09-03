@@ -7,7 +7,9 @@ from rich.table import Table
 from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, BarColumn, TextColumn
 from ..agent import run_task
-from ..models.router import list_endpoints
+from ..models.router import list_endpoints, budget_status
+from ..memory.store import recent
+from ..agents.specialists import AGENTS
 
 console = Console()
 
@@ -25,15 +27,34 @@ def show_endpoints():
 
 def show_todos(todos):
     t = Table(title="Todo", show_header=True)
-    t.add_column("#"); t.add_column("Kaam"); t.add_column("Status")
+    t.add_column("#"); t.add_column("Kaam"); t.add_column("Agent"); t.add_column("Status")
     icon = {"pending": "○", "doing": "→", "done": "✓"}
     for i, td in enumerate(todos, 1):
-        t.add_row(str(i), td["title"][:50], icon.get(td["status"], "?"))
+        t.add_row(str(i), td["title"][:40], td.get("agent", "-")[:12], icon.get(td["status"], "?"))
     console.print(t)
+
+def show_budget():
+    b = budget_status()
+    console.print(Panel(f"💰 {b['used']}/{b['budget']} tokens | {b['pct']}% | ⚡ {b['mode']}",
+                        title="Budget", border_style="yellow"))
+
+def show_memory():
+    rows = recent(5)
+    if not rows:
+        console.print("[dim]Memory khaali — pehla task karo.[/]")
+        return
+    t = Table(title="Memory (recent)", show_header=True)
+    t.add_column("Task"); t.add_column("Summary")
+    for task, summ in rows:
+        t.add_row(task[:40], summ[:60])
+    console.print(t)
+
+def show_agents():
+    console.print(Panel("🤖 " + " | ".join(AGENTS), title="Agents", border_style="magenta"))
 
 def main_loop():
     show_header()
-    console.print("[dim]Commands: /endpoints list | /quit | seedha task likho[/]\n")
+    console.print("[dim]Commands: /endpoints /budget /memory /agents /quit | seedha task likho[/]\n")
     while True:
         try:
             task = Prompt.ask("[bold green]❯[/]").strip()
@@ -48,6 +69,15 @@ def main_loop():
         if task == "/endpoints":
             show_endpoints()
             continue
+        if task == "/budget":
+            show_budget()
+            continue
+        if task == "/memory":
+            show_memory()
+            continue
+        if task == "/agents":
+            show_agents()
+            continue
         live_line = {"msg": "soch raha hu..."}
         def live_cb(m): live_line["msg"] = m
         with Progress(TextColumn("⚡ {task.fields[live]}"), BarColumn(),
@@ -61,5 +91,5 @@ def main_loop():
                            ask_cb=lambda q: Confirm.ask(f"⚠️  {q}"))
             prog.update(pt, completed=100)
         show_todos(res["todos"])
-        console.print(Panel(f"[green]{res['summary']}[/]\n[dim]via {res['endpoint']} | memory saved[/]",
+        console.print(Panel(f"[green]{res['summary']}[/]\n[dim]via {res['endpoint']} | {res.get('mode','single')} | {res.get('budget','')} | memory saved[/]",
                             title="✅ Result", border_style="green"))

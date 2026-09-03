@@ -63,6 +63,35 @@ def select_endpoint(task_budget=500):
     return {"name": "rule-based", "url": "local", "key": "",
             "daily_limit": -1, "free": True, "desc": "Emergency fallback"}
 
+def track_usage(name, tokens=100):
+    """Endpoint usage badhao, daily reset ke saath. Returns (used, limit)."""
+    import datetime as _dt
+    usage = _load_json(USAGE, {})
+    today = _dt.date.today().isoformat()
+    if usage.get("date") != today:
+        usage = {"date": today}
+    usage[name] = usage.get(name, 0) + tokens
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    try:
+        with open(USAGE, "w", encoding="utf-8") as f:
+            json.dump(usage, f, indent=2)
+    except Exception:
+        pass
+    lim = next((e["daily_limit"] for e in BUILTIN_FREE if e["name"] == name), -1)
+    return usage[name], lim
+
+def budget_status(daily_budget=5000):
+    """Total free-tier usage summary. TUI /budget ke liye."""
+    import datetime as _dt
+    usage = _load_json(USAGE, {})
+    today = _dt.date.today().isoformat()
+    if usage.get("date") != today:
+        return {"used": 0, "budget": daily_budget, "pct": 0, "mode": "auto/smart"}
+    used = sum(v for k, v in usage.items() if k != "date")
+    pct = min(100, int(used * 100 / daily_budget)) if daily_budget else 0
+    mode = "auto/fast (budget saver)" if pct >= 80 else "auto/smart"
+    return {"used": used, "budget": daily_budget, "pct": pct, "mode": mode}
+
 def add_user_key(provider, key):
     """User ki unlimited API add karo — same provider ki multiple allowed."""
     os.makedirs(CONFIG_DIR, exist_ok=True)
