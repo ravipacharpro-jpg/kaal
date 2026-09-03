@@ -34,25 +34,25 @@ def _status_strip():
     parts = []
     try:
         b = budget_status()
-        parts.append(f"💰 {b['used']}/{b['budget']} · {b['mode']}")
+        parts.append(f" {b['used']}/{b['budget']} · {b['mode']}")
     except Exception:
         pass
     try:
         eps = list_endpoints()
-        parts.append(f"📡 {len(eps)} endpoints")
+        parts.append(f" {len(eps)} endpoints")
     except Exception:
         pass
     try:
-        parts.append(plat_describe().replace("⚙️ ", ""))
+        parts.append(plat_describe().replace(" ", ""))
     except Exception:
         pass
-    return "  │  ".join(parts)
+    return "    ".join(parts)
 
 
 def show_header():
     console.print(Panel(
         Align.center(Text.from_markup(
-            f"[bold {th.ACCENT}]🤖 KAAL[/]  [dim]— Ahead of Time[/]\n"
+            f"[bold {th.ACCENT}] KAAL[/]  [dim]— Ahead of Time[/]\n"
             "[dim]autonomous agent · Termux / Linux / macOS / Windows[/]")),
         border_style=th.ACCENT, padding=(1, 4)))
     console.print(f"[dim]{_status_strip()}[/]")
@@ -65,7 +65,7 @@ def show_header():
 
 
 def show_endpoints():
-    t = Table(title="📡 Endpoints", show_header=True,
+    t = Table(title=" Endpoints", show_header=True,
               header_style=f"bold {th.ACCENT}", border_style="dim",
               show_lines=False)
     t.add_column("#", style="dim", width=3)
@@ -74,7 +74,7 @@ def show_endpoints():
     t.add_column("Desc", style="dim")
     for i, e in enumerate(list_endpoints(), 1):
         lim = "∞" if e["daily_limit"] == -1 else str(e["daily_limit"])
-        mark = "● " if i == 1 else "○ "
+        mark = " " if i == 1 else " "
         t.add_row(str(i), mark + e["name"], lim, e["desc"][:44])
     console.print(Panel(t, border_style="dim", padding=(0, 1)))
     console.print(f"[dim]{status_line()}[/]")
@@ -87,7 +87,7 @@ def show_todos(todos):
     t.add_column("Kaam", style="bold")
     t.add_column("Agent", style="magenta")
     t.add_column("Status", justify="right")
-    icon = {"pending": "[dim]○[/]", "doing": "[yellow]→[/]", "done": "[green]✓[/]"}
+    icon = {"pending": "[dim][/]", "doing": "[yellow]→[/]", "done": "[green][/]"}
     for td in todos:
         t.add_row(icon.get(td["status"], "?"), td["title"][:46],
                   td.get("agent", "-")[:14], td["status"])
@@ -102,7 +102,7 @@ def show_result(res):
              f"{res.get('budget', '')} · memory saved",
              style="dim"),
     )
-    result = Panel(body, title="[bold green]✅ Result[/]",
+    result = Panel(body, title="[bold green] Result[/]",
                    border_style=th.OK, padding=(1, 2))
     todos = show_todos(res["todos"])
     if wide:
@@ -116,11 +116,11 @@ def show_result(res):
 def show_budget():
     b = budget_status()
     pct = b["pct"]
-    bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
+    bar = "" * (pct // 10) + "" * (10 - pct // 10)
     console.print(Panel(
         f"[bold]{bar}[/]  {b['used']}/{b['budget']} tokens ({pct}%)\n"
-        f"⚡ policy: [bold]{b['mode']}[/]",
-        title="💰 Budget", border_style=th.WARN, padding=(1, 2)))
+        f" policy: [bold]{b['mode']}[/]",
+        title=" Budget", border_style=th.WARN, padding=(1, 2)))
 
 
 def show_memory():
@@ -134,7 +134,7 @@ def show_memory():
     t.add_column("Summary", style="dim")
     for task, summ in rows:
         t.add_row(task[:44], summ[:64])
-    console.print(Panel(t, title="🧠 Memory", border_style=th.ACCENT, padding=(0, 1)))
+    console.print(Panel(t, title=" Memory", border_style=th.ACCENT, padding=(0, 1)))
 
 
 def show_agents():
@@ -144,19 +144,19 @@ def show_agents():
     for a, role in AGENT_PERSONAS.items():
         if a == "general":
             continue
-        t.add_row("⬢ " + a, role[:70])
-    console.print(Panel(t, title="🤖 Agents", border_style="magenta", padding=(0, 2)))
+        t.add_row(" " + a, role[:70])
+    console.print(Panel(t, title=" Agents", border_style="magenta", padding=(0, 2)))
 
 
 def _run_with_live(task):
     from ..models.router import estimate
     try:
-        console.print(f"[dim]💰 Cost estimate: {estimate(task)}[/]")
+        console.print(f"[dim] Cost estimate: {estimate(task)}[/]")
     except Exception:
         pass
     live = {"msg": "soch raha hu..."}
     with Progress(SpinnerColumn(style=th.ACCENT),
-                   TextColumn("⚡ {task.fields[live]}"),
+                   TextColumn(" {task.fields[live]}"),
                    BarColumn(bar_width=None),
                    TextColumn("{task.percentage:.0f}%"),
                    console=console, transient=True) as prog:
@@ -169,7 +169,7 @@ def _run_with_live(task):
 
         def stream_wrap(piece):
             tail = piece.replace("\n", " ")[-60:]
-            live["msg"] = f"💭 {tail}"
+            live["msg"] = f" {tail}"
             prog.update(pt, live=live["msg"])
 
         def ask_colored(q):
@@ -185,15 +185,15 @@ def _run_with_live(task):
                         t.append(line + "\n", style="cyan")
                     else:
                         t.append(line + "\n")
-                console.print(Panel(t, title="⚠️ Approval", border_style="yellow",
+                console.print(Panel(t, title=" Approval", border_style="yellow",
                                     padding=(0, 1)))
                 return Confirm.ask("Aage badhu?")
-            return Confirm.ask(f"⚠️  {q}")
+            return Confirm.ask(f"  {q}")
 
         res = run_task(task, live_cb=wrap,
                        ask_cb=ask_colored,
                        on_token=stream_wrap,
-                       ask_text_cb=lambda q: Prompt.ask(f"[bold yellow]❓ {q}[/]"))
+                       ask_text_cb=lambda q: Prompt.ask(f"[bold yellow] {q}[/]"))
         prog.update(pt, completed=100)
     return res
 
@@ -202,7 +202,7 @@ def main_loop():
     show_header()
     while True:
         try:
-            task = Prompt.ask("[bold green]❯[/]").strip()
+            task = Prompt.ask("[bold green][/]").strip()
         except (EOFError, KeyboardInterrupt):
             console.print("\n[yellow]Kaal band. Phir milenge.[/]")
             break
@@ -231,7 +231,7 @@ def main_loop():
                     _f.write(f"\n- {parts[2][:200]}\n")
                 console.print("[green]USER.md me likh diya.[/]")
                 continue
-            console.print(Panel(_who() or "[dim]Khaali.[/]", title="👤 USER + MEMORY",
+            console.print(Panel(_who() or "[dim]Khaali.[/]", title=" USER + MEMORY",
                                 border_style=th.ACCENT, padding=(0, 1)))
             console.print("[dim]Use: /user add <baat> — ya memory/USER.md seedha edit karo[/]")
             continue
@@ -247,18 +247,60 @@ def main_loop():
             console.print(f"[green]{add_user_key(parts[1], parts[2])}[/]")
             continue
         if task.startswith("/schedule"):
+            from ..scheduler import list_jobs, remove as _rm
             parts = task.split(" ", 2)
-            if len(parts) < 3:
-                jobs = sched_due()
-                console.print(f"[dim]Due jobs: {len(jobs)}[/]")
-                for j in jobs[:5]:
-                    console.print(f"⏰ {j['task'][:60]}")
-                console.print("[dim]Use: /schedule 86400 task yahan[/]")
+            if len(parts) == 1 or parts[1] == "ls":
+                jobs = list_jobs()
+                if not jobs:
+                    console.print("[dim]Koi job nahi. /schedule add 86400 task[/]")
+                    continue
+                t = Table(show_header=True, header_style=f"bold {th.ACCENT}",
+                          border_style="dim", box=None)
+                t.add_column("#", style="dim"); t.add_column("Task", style="bold"); t.add_column("Har", justify="right")
+                for i, j in enumerate(jobs):
+                    t.add_row(str(i), j["task"][:50], f"{j.get('interval', 86400)}s")
+                console.print(Panel(t, title="⏰ Jobs", border_style=th.ACCENT, padding=(0, 1)))
                 continue
-            try:
+            if parts[1] == "rm" and len(parts) > 2:
+                console.print(f"[yellow]{_rm(parts[2].strip())}[/]")
+                continue
+            if parts[1] == "log":
+                from ..scheduler import log_tail
+                lines = log_tail()
+                console.print(Panel("".join(lines) or "[dim]Koi run log nahi.[/]",
+                                    title=" Schedule log", border_style="dim"))
+                continue
+            if parts[1] == "add" and len(parts) > 2:
+                rest = parts[2].split(" ", 1)
+                if len(rest) < 2 or not rest[0].isdigit():
+                    console.print("[dim]Use: /schedule add 86400 task yahan[/]")
+                    continue
+                console.print(f"[green]{sched_add(rest[1], int(rest[0]))}[/]")
+                continue
+            if parts[1].isdigit() and len(parts) > 2:
                 console.print(f"[green]{sched_add(parts[2], int(parts[1]))}[/]")
-            except ValueError:
-                console.print("[red]Interval number me do: /schedule 86400 task[/]")
+                continue
+            jobs = sched_due()
+            console.print(f"[dim]Due jobs: {len(jobs)}[/]")
+            for j in jobs[:5]:
+                console.print(f"⏰ {j['task'][:60]}")
+            console.print("[dim]Use: /schedule add 86400 task | /schedule ls | /schedule rm N | /schedule log[/]")
+            continue
+        if task == "/trace":
+            from ..trace import recent as _tr
+            rows = _tr()
+            if not rows:
+                console.print("[dim]Koi trace nahi — pehla task chalao.[/]")
+                continue
+            t = Table(show_header=True, header_style=f"bold {th.ACCENT}",
+                      border_style="dim", box=None)
+            t.add_column("Task", style="bold"); t.add_column("Mode"); t.add_column("EP", style="dim")
+            t.add_column("Steps", justify="right"); t.add_column("Secs", justify="right"); t.add_column("Status", justify="right")
+            for e in rows:
+                st = "[green]done[/]" if e.get("status") == "done" else f"[yellow]{e.get('status')}[/]"
+                t.add_row(e.get("task", "")[:36], e.get("mode", ""), e.get("endpoint", "")[:14],
+                          str(e.get("steps", "")), str(e.get("secs", "")), st)
+            console.print(Panel(t, title=" Trace (coze-loop lite)", border_style=th.ACCENT, padding=(0, 1)))
             continue
         if task.startswith("/perm"):
             parts = task.split()
@@ -273,7 +315,7 @@ def main_loop():
                         color = {"ask": "yellow", "allow": "green",
                                  "deny": "red"}.get(v, "dim")
                         t.add_row(k, f"[{color}]{v}[/]")
-                console.print(Panel(t, title="🔐 Permissions",
+                console.print(Panel(t, title=" Permissions",
                                     border_style=th.ACCENT, padding=(0, 1)))
                 console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
                 continue
@@ -292,7 +334,7 @@ def main_loop():
                     t.add_column("State", justify="right")
                     for n, on in items:
                         t.add_row(n, "[green]ON[/]" if on else "[dim]OFF[/]")
-                    console.print(Panel(t, title="🔌 Plugins", border_style=th.ACCENT))
+                    console.print(Panel(t, title=" Plugins", border_style=th.ACCENT))
                 console.print("[dim]Use: /plugin enable name | /plugin disable name[/]")
                 continue
             if parts[1] in ("enable", "disable") and len(parts) > 2:
@@ -304,7 +346,7 @@ def main_loop():
             if shutil.which("termux-speech-to-text") is None:
                 console.print("[dim]Voice ke liye Termux:API chahiye: pkg install termux-api. PC pe supported nahi.[/]")
                 continue
-            console.print("[dim]🎤 Bolo... (sun raha hu)[/]")
+            console.print("[dim] Bolo... (sun raha hu)[/]")
             try:
                 r = subprocess.run(["termux-speech-to-text"], capture_output=True,
                                    text=True, timeout=30)
@@ -314,7 +356,7 @@ def main_loop():
             if not heard:
                 console.print("[dim]Kuch sunai nahi diya.[/]")
                 continue
-            console.print(f"[bold]🎤 Suna: {heard}[/]")
+            console.print(f"[bold] Suna: {heard}[/]")
             res = _run_with_live(heard)
             show_result(res)
             continue
@@ -363,7 +405,7 @@ def main_loop():
                 console.print("[green]Thread clear — nayi shuruaat.[/]")
                 continue
             th = thread_context()
-            console.print(Panel(th or "[dim]Thread khaali.[/]", title="🧵 Thread",
+            console.print(Panel(th or "[dim]Thread khaali.[/]", title=" Thread",
                                 border_style=th.ACCENT, padding=(0, 1)))
             continue
         if task.startswith("/plan"):
@@ -372,7 +414,7 @@ def main_loop():
             if not what:
                 cur = plan_read()
                 console.print(Panel(cur or "[dim]Koi plan nahi. Use: /plan task yahan[/]",
-                                    title="📋 PLAN.md", border_style=th.ACCENT))
+                                    title=" PLAN.md", border_style=th.ACCENT))
                 continue
             steps = draft(what)
             write(what, steps)
@@ -380,7 +422,7 @@ def main_loop():
             t.add_column("#", style="dim"); t.add_column("Step", style="bold")
             for i, s in enumerate(steps, 1):
                 t.add_row(str(i), s[:70])
-            console.print(Panel(t, title=f"📋 Plan: {what[:50]}", border_style=th.ACCENT))
+            console.print(Panel(t, title=f" Plan: {what[:50]}", border_style=th.ACCENT))
             if Confirm.ask("Plan approve? (yes = execute)"):
                 from ..agent import run_task as _rt
                 res = _run_with_live(what)
@@ -402,7 +444,7 @@ def main_loop():
             from ..recipes import list_all, get as recipe_get
             parts = task.split(" ", 1)
             if len(parts) < 2:
-                console.print(Panel("🍳 " + " | ".join(list_all() or ["koi nahi"]),
+                console.print(Panel(" " + " | ".join(list_all() or ["koi nahi"]),
                                     title="Recipes", border_style=th.ACCENT))
                 console.print("[dim]Use: /recipe morning-review[/]")
                 continue
@@ -411,7 +453,7 @@ def main_loop():
                 console.print("[red]Recipe mili nahi.[/]")
                 continue
             for s in steps:
-                console.print(f"[dim]🍳 {s[:70]}[/]")
+                console.print(f"[dim] {s[:70]}[/]")
                 res = _run_with_live(s)
                 show_result(res)
             continue
@@ -422,7 +464,7 @@ def main_loop():
                 console.print(Panel(
                     (f"Models: {', '.join(models) if models else 'koi nahi'}\n" if ok else "") +
                     "Presets: " + ", ".join(OLLAMA_PRESETS),
-                    title=f"🦙 Ollama ({'live ✅' if ok else 'band — `ollama serve` karo'})",
+                    title=f" Ollama ({'live ' if ok else 'band — `ollama serve` karo'})",
                     border_style=th.ACCENT, padding=(0, 1)))
                 console.print("[dim]Use: /ollama nous-hermes2[/]")
                 continue
@@ -442,7 +484,7 @@ def main_loop():
                 t.add_column("Model", style="bold")
                 for i, m in enumerate(POPULAR_MODELS, 1):
                     t.add_row(str(i), m)
-                console.print(Panel(t, title="🧠 Models (OpenRouter 75+ via openrouter key)",
+                console.print(Panel(t, title=" Models (OpenRouter 75+ via openrouter key)",
                                     border_style=th.ACCENT, padding=(0, 1)))
                 console.print("[dim]Use: /model 5 · /model architect 3 · /model editor 5[/]")
                 continue

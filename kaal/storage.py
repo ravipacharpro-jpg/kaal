@@ -47,8 +47,8 @@ def startup_check(max_mb=500):
         pass
     used = du_mb(os.path.join(REPO, "memory")) + du_mb(os.path.join(REPO, "logs"))
     if used <= max_mb:
-        return f"💾 Storage ok: {used:.1f}/{max_mb}MB"
+        return f" Storage ok: {used:.1f}/{max_mb}MB"
     freed, notes = cleanup(max_mb)
     used2 = du_mb(os.path.join(REPO, "memory")) + du_mb(os.path.join(REPO, "logs"))
     extra = f" — {'; '.join(notes)}" if notes else ""
-    return f"🧹 Auto-clean: {freed}MB free ({used:.1f}→{used2:.1f}/{max_mb}MB){extra}"
+    return f" Auto-clean: {freed}MB free ({used:.1f}→{used2:.1f}/{max_mb}MB){extra}"

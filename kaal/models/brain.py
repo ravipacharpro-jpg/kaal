@@ -10,6 +10,7 @@ from ..memory.store import recent as _recent
 from ..memory.patterns import thread_context as _thread_ctx
 from ..memory.persona import read_all as _persona_read
 from .router import try_chat
+from .. import trace as _tr
 
 SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
           "Har jawab SIRF JSON me do, koi extra text nahi:\n"
@@ -113,11 +114,11 @@ def _run_parallel(items, ask_cb, live_cb):
         return list(ex.map(_one, items))
 
 def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
-        ask_text_cb=None, clarifications=0):
+        ask_text_cb=None, clarifications=0, level=None):
     """LLM brain loop. Architect plan + editor execute (Aider style).
     jobs = smart-decomposed todos (LLM roles) display ke liye.
     on_token = streaming chunks (TUI live). ask_text_cb = clarification answers.
-    Returns (todos, summary, endpoint)."""
+    level=L1/L2/L3 autonomy gate."""
     from .router import get_role_model, try_chat_stream
     editor = get_role_model("editor")
     plan_line = ""
@@ -141,7 +142,7 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
                     pass
             elif live_cb and len(buf) % 3 == 0:
                 tail = "".join(buf)[-50:].replace("\n", " ")
-                live_cb(f"💭 model likh raha hai: {tail}")
+                live_cb(f" model likh raha hai: {tail}")
         name, txt = try_chat_stream(msgs, model=editor, on_token=_stream)
         if not txt:
             return todos, "", "rule-based"  # key fail — caller legacy pe jayega
@@ -158,7 +159,7 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
             q = d["clarify"].strip()[:200]
             if ask_text_cb and clarifications < 2:
                 if live_cb:
-                    live_cb(f"❓ {q[:60]}")
+                    live_cb(f" {q[:60]}")
                 try:
                     ans = ask_text_cb(q)
                 except Exception:
@@ -200,12 +201,27 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
             msgs.append({"role": "assistant", "content": txt})
             msgs.append({"role": "user", "content": "Aisa tool nahi hai. List se chun ke dobara JSON do."})
             continue
+        if level in ("L1", "L2"):
+            from ..autonomy import tool_allowed
+            ok, note = tool_allowed(spec["name"], level)
+            if not ok:
+                if live_cb:
+                    live_cb(note[:70])
+                todos.append({"title": f"{spec['name']}: skipped ({level})"[:50],
+                              "status": "done", "agent": "brain", "result": note[:200]})
+                msgs.append({"role": "assistant", "content": txt})
+                msgs.append({"role": "user", "content": f"{note}. Bina is tool ke aage badho ya done karo."})
+                continue
         args = t.get("args", {}) if isinstance(t.get("args"), dict) else {}
         args["_ask"] = ask_cb
         try:
             out = str(spec["fn"](args))[:1200]
         except Exception as e:
             out = f"Tool error: {e}"[:200]
+        try:
+            _tr.record_observation("brain", spec["name"], args, out, level)
+        except Exception:
+            pass
         todos.append({"title": f"{spec['name']}: {think}"[:50], "status": "done",
                       "agent": "brain", "result": out[:200]})
         msgs.append({"role": "assistant", "content": txt})

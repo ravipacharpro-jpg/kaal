@@ -38,13 +38,13 @@ def handle_text(text, run_fn):
     """Ek message handle karo. Returns reply string."""
     t = (text or "").strip()
     if t.startswith("/start") or t.startswith("/help"):
-        return ("🤖 Kaal — Ahead of Time\n/task <kaam> — chalao\n"
+        return (" Kaal — Ahead of Time\n/task <kaam> — chalao\n"
                 "/status — budget+endpoints\n/tasks seedha bhi likh sakte ho")
     if t.startswith("/status"):
         try:
             from ..models.router import budget_status
             b = budget_status()
-            return f"💰 {b['used']}/{b['budget']} | ⚡ {b['mode']}"
+            return f" {b['used']}/{b['budget']} |  {b['mode']}"
         except Exception as e:
             return f"Status fail: {e}"[:200]
     task = t[5:].strip() if t.startswith("/task") else t
@@ -52,10 +52,11 @@ def handle_text(text, run_fn):
         return "Khali task. /task <kaam> likho."
     try:
         # phone pe approval possible nahi — sensitive auto-deny (safe default)
-        res = run_fn(task, ask_cb=lambda q: False)
-        return f"✅ {res.get('summary', '')[:2000]}\n(via {res.get('endpoint', '?')})"
+        # Remote explicit task: L2 (perm allow-list) + auto-deny baaki
+        res = run_fn(task, ask_cb=lambda q: False, level="L2")
+        return f" {res.get('summary', '')[:2000]}\n(via {res.get('endpoint', '?')})"
     except Exception as e:
-        return f"❌ Fail: {e}"[:300]
+        return f" Fail: {e}"[:300]
 
 def serve(poll_secs=3):
     path = _load()
@@ -63,7 +64,7 @@ def serve(poll_secs=3):
     if not token:
         return f"Token nahi — {path} me bot_token dalo (BotFather se)."
     allowed = set(CFG["allowed_ids"])
-    print(f"🤖 Kaal Telegram live (allowed: {len(allowed)} users). Ctrl+C stop.")
+    print(f" Kaal Telegram live (allowed: {len(allowed)} users). Ctrl+C stop.")
     from ..agent import run_task
     offset = 0
     try:
@@ -82,7 +83,7 @@ def serve(poll_secs=3):
                 if not text or not cid:
                     continue
                 if allowed and uid not in allowed:
-                    _send(token, cid, "⛔ Allowed nahi ho.")
+                    _send(token, cid, " Allowed nahi ho.")
                     continue
                 _send(token, cid, "⏳ Kaal kaam kar raha hai...")
                 _send(token, cid, handle_text(text, run_task))

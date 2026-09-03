@@ -58,8 +58,27 @@ def _t_github_issues(a):
     return _untrusted(out)
 
 def _t_memory_recall(a):
-    rows = _recent(int(a.get("n", 5)))
-    return " | ".join(f"{t[:50]}→{s[:80]}" for t, s in rows)[:800] or "memory khaali"
+    n = int(a.get("n", 5))
+    rows = _recent(n)
+    if not rows:
+        return "memory khaali"
+    compact = " | ".join(f"{t[:30]}→{s[:60]}" for t, s in rows)[:600]
+    return f"[compact] {compact}\n[dim]Detail chahiye to 'memory_detail' call karo.[/]"
+
+def _t_memory_detail(a):
+    """get_observations — sirf filtered IDs ke full details (~500-1000 tokens)."""
+    idx = a.get("index")
+    if idx is not None:
+        try:
+            rows = _recent(1)
+            if idx < len(rows):
+                t, s = rows[idx]
+                return f"{t}\n{s}"
+        except Exception:
+            pass
+    n = int(a.get("n", 3))
+    rows = _recent(n)
+    return "\n---\n".join(f"{t}\n{s}" for t, s in rows)[:1500] or "memory khaali"
 
 def _t_repo_scan(a):
     return _d.repo_map(a.get("path", "."))[:2000]
@@ -137,8 +156,10 @@ TOOLS = [
      "fn": _t_github_repo},
     {"name": "github_issues", "desc": "Repo ke open issues", "params": "repo",
      "fn": _t_github_issues},
-    {"name": "memory_recall", "desc": "Purane tasks/summary dekho", "params": "n?",
-     "fn": _t_memory_recall},
+     {"name": "memory_recall", "desc": "Purane tasks/summary dekho (compact index)",
+      "params": "n?", "fn": _t_memory_recall},
+     {"name": "memory_detail", "desc": "Memory ka full detail (2-step, ~500-1000 tokens)",
+      "params": "index? or n?", "fn": _t_memory_detail},
     {"name": "repo_scan", "desc": "Codebase structure map karo", "params": "path?",
      "fn": _t_repo_scan},
     {"name": "test_run", "desc": "Tests chalao aur PASS/FAIL summary lo",

@@ -20,7 +20,7 @@ def status_line():
     if not ok:
         return "Ollama: nahi chal raha (optional — chalao to free local)"
     ms = ", ".join(models) if models else "koi model load nahi"
-    return f"Ollama: chal raha ✅ models: {ms}"
+    return f"Ollama: chal raha  models: {ms}"
 
 def chat(messages, timeout=60, usage_cb=None):
     """Keyless local LLM call. Returns (ok, text). Ollama band to (False, reason)."""
@@ -91,7 +91,7 @@ def pull(model, timeout=600):
                         d = json.loads(line)
                         last = d.get("status", "")
                         if d.get("status") == "success":
-                            return f"Pull ho gaya: {model} ✅"
+                            return f"Pull ho gaya: {model} "
                     except Exception:
                         pass
                 return f"Pull: {model} — {last[:100] or 'adhura'}"

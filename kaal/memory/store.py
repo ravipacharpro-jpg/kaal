@@ -31,7 +31,7 @@ def export_md(path="", n=20):
         f"kaal-export-{datetime.date.today().isoformat()}.md"))
     lines = ["# Kaal session export", ""]
     for t, s in reversed(rows):
-        lines += [f"## ❯ {t}", "", f"{s}", ""]
+        lines += [f"##  {t}", "", f"{s}", ""]
     with open(p, "w", encoding="utf-8") as f:
         f.write("\n".join(lines)[:50000])
     return f"Export ho gaya: {p}"

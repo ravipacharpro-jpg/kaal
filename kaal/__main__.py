@@ -22,19 +22,33 @@ def main():
         if not rows:
             console.print("Resume ke liye koi session nahi.")
             return
-        console.print(f"↩️ Resume: {rows[0][0][:80]}")
+        console.print(f"↩ Resume: {rows[0][0][:80]}")
         res = run_task(rows[0][0], live_cb=print, ask_cb=lambda q: True)
-        console.print(f"✅ {res['summary']} (via {res['endpoint']})")
+        console.print(f" {res['summary']} (via {res['endpoint']})")
         return
     if args and args[0] == "--telegram":
         from .channels.telegram import serve
         console.print(serve())
         return
+    unattended = "--unattended" in args
+    args = [a for a in args if a != "--unattended"]
+
+    def _level():
+        if unattended:
+            return "L3"
+        try:
+            from .autonomy import get_level
+            return get_level()
+        except Exception:
+            return "L1"
+
     if args and args[0] == "--schedule":
         from .scheduler import run_due
         from .agent import run_task
-        # Unattended: sensitive auto-DENY, sirf /perm allow wale chalenge
-        for line in run_due(lambda t: run_task(t, ask_cb=lambda q: False)["summary"][:150]):
+        lv = _level()
+        console.print(f"[dim]Scheduled mode — autonomy {lv} (L1=report-only, L2=allow-list, L3=full).[/]")
+        # Unattended: sensitive auto-DENY + level gate, sirf /perm allow wale chalenge
+        for line in run_due(lambda t, level: run_task(t, ask_cb=lambda q: False, level=level)["summary"][:150], lv):
             console.print(line)
         return
     if args and args[0] == "--serve":
@@ -42,11 +56,12 @@ def main():
         from .scheduler import run_due
         from .agent import run_task
         secs = int(args[1]) if len(args) > 1 and args[1].isdigit() else 300
-        console.print(f"🤖 Kaal serve mode — har {secs}s due jobs (Ctrl+C stop). Termux pe Termux:API/cron behtar.")
-        console.print("[dim]Unattended safety: sensitive ops auto-DENY (sirf /perm allow wale chalenge).[/]")
+        lv = _level()
+        console.print(f" Kaal serve mode — har {secs}s due jobs, autonomy {lv} (Ctrl+C stop). Termux pe Termux:API/cron behtar.")
+        console.print("[dim]Unattended safety: L1 report-only default; L3 sirf --unattended pe.[/]")
         try:
             while True:
-                for line in run_due(lambda t: run_task(t, ask_cb=lambda q: False)["summary"][:150]):
+                for line in run_due(lambda t, level: run_task(t, ask_cb=lambda q: False, level=level)["summary"][:150], lv):
                     console.print(line)
                 time.sleep(secs)
         except KeyboardInterrupt:
@@ -57,7 +72,7 @@ def main():
         from .agent import run_task
         show_header()
         res = run_task(" ".join(args), live_cb=print, ask_cb=lambda q: True)
-        console.print(f"✅ {res['summary']} (via {res['endpoint']})")
+        console.print(f" {res['summary']} (via {res['endpoint']})")
     else:
         from .tui.app import main_loop
         try:

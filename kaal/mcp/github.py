@@ -16,7 +16,7 @@ def repo_info(full, token=""):
     d = _get(f"/repos/{full}", token)
     if "error" in d:
         return d["error"]
-    return f"{d.get('full_name')}: ⭐{d.get('stargazers_count')} | {str(d.get('description'))[:120]}"
+    return f"{d.get('full_name')}: {d.get('stargazers_count')} | {str(d.get('description'))[:120]}"
 
 def list_issues(full, token=""):
     d = _get(f"/repos/{full}/issues?per_page=5", token)

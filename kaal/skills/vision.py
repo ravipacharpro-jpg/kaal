@@ -23,7 +23,7 @@ def describe(path, prompt="Is image me kya hai? UI bug ho to batao.", ask_cb=Non
         from ..models.router import try_vision
         name, txt = try_vision(prompt, b64, MIMES[ext])
         if txt:
-            return f"👁️ [{name}]: {txt[:800]}"
+            return f" [{name}]: {txt[:800]}"
         return "Vision fail — vision model wali key chahiye (/key)"
     except Exception as e:
         return f"Vision error: {e}"[:200]

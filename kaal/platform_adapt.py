@@ -35,9 +35,9 @@ def battery_note():
     for cmd in ("termux-battery-status",):
         import shutil
         if shutil.which(cmd):
-            return "🔋 Termux battery API mili — low battery pe heavy task roko"
-    return "🔋 Battery saver: Termux pe concurrency 1, bade task tukdo me"
+            return " Termux battery API mili — low battery pe heavy task roko"
+    return " Battery saver: Termux pe concurrency 1, bade task tukdo me"
 
 def describe():
     p = detect()
-    return f"⚙️ Platform: {p} | concurrency: {CONCURRENCY.get(p,1)} | data: {data_dir()}"
+    return f" Platform: {p} | concurrency: {CONCURRENCY.get(p,1)} | data: {data_dir()}"

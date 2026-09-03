@@ -16,7 +16,7 @@ def status():
     code, out = _git(["status", "--short"])
     if code != 0:
         return out
-    return out or "Working tree clean ✅"
+    return out or "Working tree clean "
 
 def diff_summary():
     code, out = _git(["diff", "--stat"])
@@ -43,7 +43,7 @@ def auto_commit(message="", ask_cb=None):
     clean, issues = _sec.scan_diff()
     if not clean:
         detail = "; ".join(issues[:5])
-        if ask_cb and not ask_cb(f"⚠️ Secret leak mila: {detail} — phir bhi commit?"):
+        if ask_cb and not ask_cb(f" Secret leak mila: {detail} — phir bhi commit?"):
             _git(["reset"])
             return f"Commit roka — secret leak: {detail}"
     code3, out3 = _git(["commit", "-m", message[:100]])
@@ -71,8 +71,8 @@ def changelog(limit=15, since=""):
         else:
             groups["other"].append(f"{h} {msg[:70]}")
     parts = []
-    for name, items in (("✨ Features", groups["feat"]), ("🐛 Fixes", groups["fix"]),
-                        ("📦 Other", groups["other"])):
+    for name, items in ((" Features", groups["feat"]), (" Fixes", groups["fix"]),
+                        (" Other", groups["other"])):
         if items:
             parts.append(name + "\n" + "\n".join(f"- {i}" for i in items[:10]))
     return "\n\n".join(parts)[:1500]

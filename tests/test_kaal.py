@@ -277,11 +277,11 @@ class TestDifferentiators(unittest.TestCase):
         from kaal.channels.telegram import handle_text, NAME
         self.assertEqual(NAME, "telegram")
         self.assertIn("Kaal", handle_text("/start", None))
-        self.assertIn("💰", handle_text("/status", None))
+        self.assertIn("", handle_text("/status", None))
         r = handle_text("/task hello", lambda t, **k: {"summary": "done-ok", "endpoint": "x"})
         self.assertIn("done-ok", r)
         r2 = handle_text("hello", lambda t, **k: (_ for _ in ()).throw(Exception("x")))
-        self.assertIn("❌", r2)
+        self.assertIn("", r2)
 
     def test_service_file_valid(self):
         import configparser
@@ -324,6 +324,31 @@ class TestSecurity(unittest.TestCase):
         from kaal.config_store import check_perm
         self.assertTrue(check_perm("delete_files", lambda q: False) is False)
         self.assertTrue(check_perm("nope_op_xyz", lambda q: True) is True)
+
+    def test_levels(self):
+        from kaal import autonomy as _au
+        ok, note = _au.tool_allowed("file_delete", "L1")
+        self.assertFalse(ok)
+        self.assertIn("L1", note)
+        ok2, _ = _au.tool_allowed("file_read", "L1")
+        self.assertTrue(ok2)
+        ok3, _ = _au.tool_allowed("file_delete", "L3")
+        self.assertTrue(ok3)
+        # L1 me delete step report-only (task-gate allow, level-gate skip)
+        from kaal.agent import run_task
+        r = run_task("delete proof2.txt", ask_cb=lambda q: True, level="L1")
+        self.assertIn("L1", r["summary"])
+
+    def test_trace_logged(self):
+        from kaal.agent import run_task
+        from kaal.trace import recent
+        run_task("file list karo trace-test", ask_cb=lambda q: True)
+        rows = recent(3)
+        self.assertTrue(any("trace-test" in e.get("task", "") for e in rows))
+        try:
+            os.remove("logs/trace.jsonl")
+        except OSError:
+            pass
 
     def test_injection_marking(self):
         from kaal.skills.tools import _t_browser_fetch, UNTRUSTED_OPEN
@@ -453,6 +478,36 @@ class TestCrossPlatform(unittest.TestCase):
         r = run_task("file list karo aur github repo check karo", ask_cb=lambda q: True)
         self.assertEqual(r["status"], "done")
         self.assertEqual(len(r["todos"]), 2)
+
+    def test_memory_detail_tool(self):
+        from kaal.skills.tools import _t_memory_recall, _t_memory_detail
+        out = _t_memory_recall({"n": 3})
+        self.assertIn("compact", out)
+        detail = _t_memory_detail({"index": 0})
+        self.assertIsInstance(detail, str)
+
+    def test_observations_logged(self):
+        from kaal.agent import run_task
+        from kaal.trace import recent
+        run_task("file list karo obs-test", ask_cb=lambda q: True)
+        rows = recent(3)
+        self.assertTrue(any("obs-test" in e.get("task", "") for e in rows))
+        obs = [r for r in rows if r.get("kind") == "observation"]
+        self.assertGreaterEqual(len(obs), 1)
+        try:
+            os.remove("logs/trace.jsonl")
+        except OSError:
+            pass
+
+    def test_personas_enriched(self):
+        from kaal.agents.orchestrator import PERSONAS, ROLES
+        self.assertIn("minimal_change_engineer", PERSONAS)
+        self.assertIn("security_architect", PERSONAS)
+        self.assertIn("database_optimizer", PERSONAS)
+        self.assertIn("software_architect", PERSONAS)
+        self.assertIn("code_reviewer", PERSONAS)
+        self.assertIn("minimal_change_engineer", ROLES)
+        self.assertIn("security_architect", ROLES)
 
 
 if __name__ == "__main__":

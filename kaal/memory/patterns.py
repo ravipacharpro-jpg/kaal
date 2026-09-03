@@ -40,7 +40,7 @@ def suggest(task, limit=2):
     c.close()
     if not rows:
         return ""
-    return "💡 Similar pehle: " + " | ".join(f"'{t[:50]}' → {s[:100]}" for t, s in rows)
+    return " Similar pehle: " + " | ".join(f"'{t[:50]}' → {s[:100]}" for t, s in rows)
 
 def _thread_append(task, summary):
     import json

@@ -363,4 +363,4 @@ def edit_file(path, old, new, ask_cb=None, fuzzy=True, replace_all=False):
         check = f.read()
     if new[:200] not in check and new.strip()[:100] not in check:
         return "Verify fail — change apply nahi hui, undo karo"
-    return f"Edit ho gayi {note}: {p} (undo: file_undo, verified ✅)\nDiff:\n{diff[:500]}"
+    return f"Edit ho gayi {note}: {p} (undo: file_undo, verified )\nDiff:\n{diff[:500]}"

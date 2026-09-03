@@ -358,7 +358,7 @@ def estimate(task, steps=3):
     except Exception:
         used = 0
     left = max(0, daily - used)
-    flag = " ✅ budget me" if toks <= left else " ⚠️ budget se zyada lag sakta"
+    flag = "  budget me" if toks <= left else "  budget se zyada lag sakta"
     return f"≈{toks} tokens{flag}"
 
 def add_user_key(provider, key):

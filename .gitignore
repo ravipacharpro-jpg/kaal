@@ -14,3 +14,6 @@ config/endpoint_usage.json
 config/jobs.json
 config/model.json
 config/sandbox.json
+config/schedule.log
+config/plugins.json
+logs/trace.jsonl
