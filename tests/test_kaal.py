@@ -225,6 +225,40 @@ class TestRoadmap(unittest.TestCase):
         from kaal.skills.pluginman import list_all
         self.assertEqual(list_all(), [])
 
+
+class TestContextPower(unittest.TestCase):
+    def test_semsearch(self):
+        from kaal.skills import semsearch
+        n = semsearch.index_path("README.md")
+        self.assertGreaterEqual(n, 1)
+        rows = semsearch.search("install")
+        self.assertGreaterEqual(len(rows), 1)
+
+    def test_compress(self):
+        from kaal.models.brain import _compress
+        msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "t"}]
+        msgs += [{"role": "assistant", "content": "x" * 500}, {"role": "user", "content": "y" * 500}] * 5
+        out = _compress(msgs)
+        self.assertLess(len("".join(m["content"] for m in out)),
+                        len("".join(m["content"] for m in msgs)))
+        self.assertEqual(out[:2], msgs[:2])
+
+    def test_parallel_tools_mock(self):
+        from kaal.models import brain
+        script = [
+            ("m", '{"thinking": "do parallel", "tools": [{"name": "file_list", "args": {"path": "."}}, {"name": "memory_recall", "args": {}}]}'),
+            ("m", '{"thinking": "done", "done": "parallel ok"}'),
+        ]
+        import kaal.models.router as _rt
+        _orig = _rt.try_chat_stream
+        _rt.try_chat_stream = lambda msgs, **kw: script.pop(0)
+        try:
+            todos, summary, ep = brain.run("t", ask_cb=lambda q: True)
+        finally:
+            _rt.try_chat_stream = _orig
+        self.assertEqual(summary, "parallel ok")
+        self.assertGreaterEqual(len(todos), 3)
+
     def test_builtin_free_need_keys(self):
         from kaal.models.router import BUILTIN_FREE
         keyless = [e for e in BUILTIN_FREE if e["key"] in ("", "local")]

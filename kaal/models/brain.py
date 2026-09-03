@@ -13,6 +13,7 @@ SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
           "Har jawab SIRF JSON me do, koi extra text nahi:\n"
           '{"thinking": "detail me: kya kar raha hu + kyun (2-4 lines ok)", '
           '"tool": {"name": "tool_name", "args": {...}}}  YA  '
+          '{"thinking": "...", "tools": [{"name": "...", "args": {...}}]} (sirf independent READS ek saath)  YA  '
           '{"thinking": "...", "done": "final summary max 3 lines"}\n'
           "RULES: code TUI me mat dikhao, sirf summary. "
           "file_edit/file_delete/pr_open se pehle tool khud approval lega. "
@@ -59,6 +60,38 @@ def _parse_json(txt):
     except Exception:
         return None
 
+def _compress(msgs, keep_last=4):
+    """Purane tool exchanges ko 1-line summary me sameto (context bloat guard).
+    system + task + last N full, beech wale compressed."""
+    if len(msgs) <= 2 + keep_last:
+        return msgs
+    head, tail = msgs[:2], msgs[-keep_last:]
+    mid = []
+    for m in msgs[2:-keep_last]:
+        c = m.get("content", "")
+        mid.append({"role": m.get("role", "user"),
+                    "content": ("[old] " + c[:120])})
+    return head + mid + tail
+
+READONLY_TOOLS = {"file_read", "file_outline", "file_list", "browser_fetch",
+                    "github_repo", "github_issues", "memory_recall", "repo_scan",
+                    "code_search", "git_diff", "git_changelog"}
+
+def _run_parallel(items, ask_cb, live_cb):
+    """Independent read-only tools ek saath. Returns [(name, out)]."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _one(t):
+        spec = _tools.BY_NAME.get(t.get("name", ""))
+        args = t.get("args", {}) if isinstance(t.get("args"), dict) else {}
+        try:
+            return spec["name"], str(spec["fn"](args))[:1200]
+        except Exception as e:
+            return t.get("name", "?"), f"Tool error: {e}"[:200]
+
+    with ThreadPoolExecutor(max_workers=min(4, len(items))) as ex:
+        return list(ex.map(_one, items))
+
 def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None):
     """LLM brain loop. Architect plan + editor execute (Aider style).
     jobs = smart-decomposed todos (LLM roles) display ke liye.
@@ -75,6 +108,7 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None)
               "agent": j["agent"]} for j in (jobs or [])]
     endpoint = "rule-based"
     for step in range(max_iters):
+        msgs = _compress(msgs)
         buf = []
         def _stream(piece):
             buf.append(piece)
@@ -104,6 +138,23 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None)
             todos.append({"title": task[:50], "status": "done",
                           "agent": "brain", "result": str(d["done"])[:200]})
             return todos, str(d["done"])[:400], endpoint
+        if isinstance(d.get("tools"), list) and d["tools"]:
+            items = d["tools"][:4]
+            names = [t.get("name", "") for t in items]
+            if all(n in READONLY_TOOLS for n in names):
+                if live_cb:
+                    live_cb(f"{len(items)} parallel reads: {', '.join(names)[:60]}")
+                res = _run_parallel(items, ask_cb, live_cb)
+                combined = "\n".join(f"[{n}]: {o[:400]}" for n, o in res)
+                for n, o in res:
+                    todos.append({"title": f"{n}: {think}"[:50], "status": "done",
+                                  "agent": "brain", "result": o[:200]})
+                msgs.append({"role": "assistant", "content": txt})
+                msgs.append({"role": "user", "content": f"PARALLEL RESULTS:\n{combined}\nAgle step ka JSON do."})
+                continue
+            msgs.append({"role": "assistant", "content": txt})
+            msgs.append({"role": "user", "content": "Parallel sirf read-only tools pe. Write wale alag-alag bhejo."})
+            continue
         t = d.get("tool", {})
         spec = _tools.BY_NAME.get(t.get("name", ""))
         if not spec:

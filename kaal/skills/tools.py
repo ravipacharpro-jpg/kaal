@@ -91,6 +91,15 @@ def _t_export(a):
     from ..memory.store import export_md
     return export_md(a.get("path", ""))[:200]
 
+def _t_code_search(a):
+    from . import semsearch as _ss
+    rows = _ss.search(a.get("query", ""), int(a.get("limit", 5) or 5))
+    if rows:
+        return "\n".join(rows)[:1500]
+    n = _ss.index_path(a.get("path", "."))
+    rows = _ss.search(a.get("query", ""), int(a.get("limit", 5) or 5))
+    return (f"(indexed {n} chunks)\n" + "\n".join(rows))[:1500] if rows else "Kuch nahi mila"
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho (badi file: offset/lines do)",
      "params": "path, offset?, lines?", "fn": _t_file_read},
@@ -138,6 +147,8 @@ TOOLS = [
      "params": "-", "fn": _t_rewind, "needs_approval": True},
     {"name": "export_session", "desc": "Sessions ka markdown export",
      "params": "path?", "fn": _t_export},
+    {"name": "code_search", "desc": "Codebase me relevant snippets dhoondo (BM25)",
+     "params": "query, path?, limit?", "fn": _t_code_search},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}
