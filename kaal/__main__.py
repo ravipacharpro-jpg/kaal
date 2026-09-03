@@ -26,6 +26,10 @@ def main():
         res = run_task(rows[0][0], live_cb=print, ask_cb=lambda q: True)
         console.print(f"✅ {res['summary']} (via {res['endpoint']})")
         return
+    if args and args[0] == "--telegram":
+        from .bridge_telegram import serve
+        console.print(serve())
+        return
     if args and args[0] == "--schedule":
         from .scheduler import run_due
         from .agent import run_task

@@ -39,7 +39,7 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollam
 
 ## Design (honest)
 - **TUI (Rich):** Todo auto `○/→/✓` + agent column, fixed 1-line live, summary only (code dump nahi)
-- **Brain 2 modes:** vault API key ho YA Ollama local chal raha ho to LLM tool-loop (25 tools, parallel reads, personas + few-shot + self-correction + streaming + context-compress + thread); nahi to keyword rule path (fast, par AI nahi — seedha likha hai)
+- **Brain 2 modes:** vault API key ho YA Ollama local chal raha ho to LLM tool-loop (26 tools, clarify+review, parallel reads, personas + few-shot + self-correction + streaming + context-compress + thread); nahi to keyword rule path (fast, par AI nahi — seedha likha hai)
 - **Endpoints:** 20 configured targets; bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
 - **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
 - **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
@@ -47,7 +47,10 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollam
 - **Multi-agent:** 5 personas + LLM role classify (brain mode), desktop pe parallel, Termux pe sequential
 - **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate
 - **Memory:** SQLite + FTS patterns + thread continuity + PLAN.md + recipes + session export
-- **Serve/vision:** `--serve` loop + systemd unit (desktop), image_describe (vision key pe)
+- **Serve/vision/bridge:** `--serve` loop + systemd unit (desktop), image_describe (vision key pe), `--telegram` phone bridge, `/voice` (Termux:API mic)
+```bash
+kaal --telegram   # phone se task (config/telegram.json me token+ids)
+```
 - **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
 
 ## Structure
@@ -59,5 +62,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.1-dev — gaps batch in. Tests 37 pass + benchmark 12/12 (hermetic).
+v0.1.1-dev — differentiators in. Tests 40 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.

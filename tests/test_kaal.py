@@ -243,6 +243,46 @@ class TestRoadmap(unittest.TestCase):
         self.assertEqual(list_all(), [])
 
 
+class TestDifferentiators(unittest.TestCase):
+    def test_clarify_flow(self):
+        from kaal.models import brain
+        script = [
+            ("m", '{"thinking": "unclear", "clarify": "Kaunsi file?"}'),
+            ("m", '{"thinking": "ok", "done": "kaam ho gaya"}'),
+        ]
+        import kaal.models.router as _rt
+        _orig = _rt.try_chat_stream
+        _rt.try_chat_stream = lambda msgs, **kw: script.pop(0)
+        asked = []
+        try:
+            todos, summary, ep = brain.run(
+                "fix karo", ask_cb=lambda q: True,
+                ask_text_cb=lambda q: asked.append(q) or "README.md")
+        finally:
+            _rt.try_chat_stream = _orig
+        self.assertEqual(asked, ["Kaunsi file?"])
+        self.assertEqual(summary, "kaam ho gaya")
+
+    def test_self_review_ok(self):
+        from kaal import agent
+        import kaal.models.router as _rt
+        _orig = _rt.try_chat
+        _rt.try_chat = lambda msgs, **kw: ("m", "OK")
+        try:
+            self.assertIn("OK", agent._self_review("t", "s"))
+        finally:
+            _rt.try_chat = _orig
+
+    def test_telegram_handle(self):
+        from kaal.bridge_telegram import handle_text
+        self.assertIn("Kaal", handle_text("/start", None))
+        self.assertIn("💰", handle_text("/status", None))
+        r = handle_text("/task hello", lambda t, **k: {"summary": "done-ok", "endpoint": "x"})
+        self.assertIn("done-ok", r)
+        r2 = handle_text("hello", lambda t, **k: (_ for _ in ()).throw(Exception("x")))
+        self.assertIn("❌", r2)
+
+
 class TestGaps(unittest.TestCase):
     def test_real_usage_callback(self):
         import kaal.models.llm as _llm

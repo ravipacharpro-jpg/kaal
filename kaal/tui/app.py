@@ -174,7 +174,8 @@ def _run_with_live(task):
 
         res = run_task(task, live_cb=wrap,
                        ask_cb=lambda q: Confirm.ask(f"⚠️  {q}"),
-                       on_token=stream_wrap)
+                       on_token=stream_wrap,
+                       ask_text_cb=lambda q: Prompt.ask(f"[bold yellow]❓ {q}[/]"))
         prog.update(pt, completed=100)
     return res
 
@@ -265,6 +266,25 @@ def main_loop():
                 console.print(f"[green]{_pl_en(parts[2], parts[1] == 'enable')}[/]")
                 console.print("[dim]Restart pe load hoga.[/]")
                 continue
+        if task == "/voice":
+            import shutil, subprocess
+            if shutil.which("termux-speech-to-text") is None:
+                console.print("[dim]Voice ke liye Termux:API chahiye: pkg install termux-api. PC pe supported nahi.[/]")
+                continue
+            console.print("[dim]🎤 Bolo... (sun raha hu)[/]")
+            try:
+                r = subprocess.run(["termux-speech-to-text"], capture_output=True,
+                                   text=True, timeout=30)
+                heard = r.stdout.strip()[:300]
+            except Exception as e:
+                heard = ""
+            if not heard:
+                console.print("[dim]Kuch sunai nahi diya.[/]")
+                continue
+            console.print(f"[bold]🎤 Suna: {heard}[/]")
+            res = _run_with_live(heard)
+            show_result(res)
+            continue
         if task.startswith("/sandbox"):
             from ..skills.sandbox import available as _sb_av
             parts = task.split()

@@ -15,6 +15,22 @@ SENSITIVE = {"delete_files": ("delete", "rm ", "format"),
              "browser": ("browser", "site", "web", "http", "github", "repo"),
              "secrets": ("password", "token", "key")}
 
+def _self_review(task, summary):
+    """Ek reviewer pass apne kaam pe. Returns ' | 🔍 review: ...' ya ''."""
+    try:
+        from .models.router import try_chat
+        _, txt = try_chat([
+            {"role": "system", "content": "Tum reviewer ho. Neeche task+result hai. "
+             "Sirf 'OK' likho agar sahi hai, warna 1 line me kami batao (Hindi)."},
+            {"role": "user", "content": f"TASK: {task[:300]}\nRESULT: {summary[:500]}"}])
+        txt = (txt or "").strip()[:150]
+        if not txt:
+            return ""
+        mark = "OK ✅" if txt.upper().startswith("OK") else f"dhyaan do: {txt}"
+        return f" | 🔍 review: {mark}"
+    except Exception:
+        return ""
+
 def needs_permission(task):
     t = task.lower()
     for op, keys in SENSITIVE.items():
@@ -62,9 +78,11 @@ def _dispatch(step, live_cb, ask_cb):
     if live_cb: live_cb(f"abhi ye kar raha hu: {step[:50]}")
     return f"✓ {step[:80]}"
 
-def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None):
+def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
+             ask_text_cb=None):
     """Ek task chalao. Vault key ho to LLM BRAIN, nahi to legacy rule path.
-    live_cb = 1-line Hindi update, on_token = streaming chunks. Code dump nahi."""
+    live_cb = 1-line Hindi update, on_token = streaming, ask_text_cb = clarification.
+    Code dump nahi."""
     # --- BRAIN PATH (Claude-style): model har step decide karta hai ---
     if brain_active():
         if live_cb:
@@ -76,8 +94,12 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None):
         try:
             jobs = decompose(task, smart=True)
             todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs,
-                                                 on_token=on_token)
+                                                 on_token=on_token,
+                                                 ask_text_cb=ask_text_cb)
             if summary:  # brain ne complete kiya
+                review_note = _self_review(task, summary)
+                if review_note:
+                    summary = (summary + review_note)[:450]
                 _mcp.unload_idle(0)
                 daily, _p = _cfg.get_budget()
                 try:

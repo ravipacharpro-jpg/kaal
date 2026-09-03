@@ -15,7 +15,10 @@ SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
           '{"thinking": "detail me: kya kar raha hu + kyun (2-4 lines ok)", '
           '"tool": {"name": "tool_name", "args": {...}}}  YA  '
           '{"thinking": "...", "tools": [{"name": "...", "args": {...}}]} (sirf independent READS ek saath)  YA  '
+          '{"thinking": "task ambiguous hai", "clarify": "1 short sawaal user se"}  YA  '
           '{"thinking": "...", "done": "final summary max 3 lines"}\n'
+          "AMBIGUITY: task me file/goal unclear ho to seedha tool mat chalao — pehle clarify mango "
+          "(max 2 baar). Clear task pe clarify mat mango, kaam shuru karo.\n"
           "RULES: code TUI me mat dikhao, sirf summary. "
           "file_edit/file_delete/pr_open se pehle tool khud approval lega. "
           "Pehle file_read/repo_scan/file_outline se context lo, phir edit karo. "
@@ -99,10 +102,12 @@ def _run_parallel(items, ask_cb, live_cb):
     with ThreadPoolExecutor(max_workers=min(4, len(items))) as ex:
         return list(ex.map(_one, items))
 
-def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None):
+def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
+        ask_text_cb=None, clarifications=0):
     """LLM brain loop. Architect plan + editor execute (Aider style).
     jobs = smart-decomposed todos (LLM roles) display ke liye.
-    on_token = streaming chunks (TUI live). Returns (todos, summary, endpoint)."""
+    on_token = streaming chunks (TUI live). ask_text_cb = clarification answers.
+    Returns (todos, summary, endpoint)."""
     from .router import get_role_model, try_chat_stream
     editor = get_role_model("editor")
     plan_line = ""
@@ -139,6 +144,23 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None)
         think = str(d.get("thinking", ""))[:500]
         if live_cb and think:
             live_cb(think[:80])
+        if isinstance(d.get("clarify"), str) and d["clarify"].strip():
+            q = d["clarify"].strip()[:200]
+            if ask_text_cb and clarifications < 2:
+                if live_cb:
+                    live_cb(f"❓ {q[:60]}")
+                try:
+                    ans = ask_text_cb(q)
+                except Exception:
+                    ans = ""
+                if ans:
+                    msgs.append({"role": "assistant", "content": txt})
+                    msgs.append({"role": "user", "content": f"Jawab: {ans[:300]}\nAb kaam shuru karo."})
+                    clarifications += 1
+                    continue
+            msgs.append({"role": "assistant", "content": txt})
+            msgs.append({"role": "user", "content": "User se puch nahi sakte — best guess se kaam karo."})
+            continue
         if "done" in d:
             for td in todos:
                 td["status"] = "done"
