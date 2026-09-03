@@ -111,20 +111,47 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
     except Exception:
         pass
     out = []
-    for i, td in enumerate(todos):
+
+    def _one(td):
         td["status"] = "doing"
-        if live_cb and use_multi:
-            live_cb(f"[{td['agent']}] abhi ye kar raha hu: {td['title'][:45]}")
-        res = _dispatch(td["title"], live_cb if not use_multi else None, ask_cb)
-        if use_multi and live_cb:
-            pass  # live already shown with agent tag
+        res = _dispatch(td["title"], None, ask_cb)
         if res == "Delete cancel — permission deny":
             td["status"] = "pending"
-            out.append("✗ delete cancel")
-            break
+            return "✗ delete cancel", True
         td["status"] = "done"
         td["result"] = res[:200]
-        out.append(f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
+        return f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}", False
+
+    risky = any(("delete" in t["title"].lower() or "edit" in t["title"].lower()
+                 or "write" in t["title"].lower() or "commit" in t["title"].lower())
+                for t in todos)
+    try:
+        from .platform_adapt import CONCURRENCY, detect as _plat
+        workers = CONCURRENCY.get(_plat(), 1)
+    except Exception:
+        workers = 1
+    if use_multi and workers > 1 and len(todos) > 1 and not risky:
+        if live_cb:
+            live_cb(f"{len(todos)} agents parallel chal rahe hain")
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(workers, len(todos))) as ex:
+            results = list(ex.map(_one, todos))
+        for line, stop in results:
+            out.append(line)
+            if stop:
+                break
+    else:
+        for i, td in enumerate(todos):
+            if live_cb and use_multi:
+                live_cb(f"[{td['agent']}] abhi ye kar raha hu: {td['title'][:45]}")
+            res = _dispatch(td["title"], live_cb if not use_multi else None, ask_cb)
+            if res == "Delete cancel — permission deny":
+                td["status"] = "pending"
+                out.append("✗ delete cancel")
+                break
+            td["status"] = "done"
+            td["result"] = res[:200]
+            out.append(f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
     _mcp.unload_idle(0)
     base = " | ".join(out)[:300]
     # Real LLM summary sirf tab jab user key hai, warna local summary (no-key safe)

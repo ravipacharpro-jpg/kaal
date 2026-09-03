@@ -14,7 +14,8 @@ def run(cmd, ask_cb=None, timeout=30):
     if any(b in c for b in BLOCK):
         return "Block: dangerous command"
     try:
-        parts = shlex.split(c)
+        import os as _os
+        parts = shlex.split(c, posix=_os.name != "nt")
     except Exception:
         return "Command parse nahi hui"
     if not parts or parts[0] not in ALLOW:

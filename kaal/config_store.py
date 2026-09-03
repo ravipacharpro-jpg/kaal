@@ -6,7 +6,7 @@ from .config_defaults import DEFAULTS
 
 REPO_CONFIG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config"))
 FILES = {"economy": "economy.json", "permissions": "permissions.json", "tui": "tui.json",
-         "storage": "storage.json"}
+         "storage": "storage.json", "sandbox": "sandbox.json", "model": "model.json"}
 
 def _load(name):
     try:
@@ -32,7 +32,7 @@ def _merge(base, over):
 
 def get_all():
     cfg = json.loads(json.dumps(DEFAULTS))
-    for n in ("economy", "permissions", "tui", "storage"):
+    for n in ("economy", "permissions", "tui", "storage", "sandbox", "model"):
         cfg = _merge(cfg, _load(n))
     # flat keys support: economy.json me {"daily_budget":..} seedha
     eco = _load("economy")

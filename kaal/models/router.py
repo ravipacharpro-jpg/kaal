@@ -168,6 +168,19 @@ def get_model():
     d = _load_json(MODEL_FILE, {})
     return d.get("default_model", "auto")
 
+def get_role_model(role):
+    """architect/editor split (Aider style). Set nahi to default model."""
+    d = _load_json(MODEL_FILE, {})
+    return d.get(f"{role}_model", d.get("default_model", "auto"))
+
+def set_role_model(role, name):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    d = _load_json(MODEL_FILE, {})
+    d[f"{role}_model"] = name
+    with open(MODEL_FILE, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=2)
+    return f"{role} model set: {name}"
+
 def set_model(name):
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(MODEL_FILE, "w", encoding="utf-8") as f:
@@ -178,19 +191,23 @@ def _model_for(prov):
     m = get_model()
     return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
 
-def try_chat(messages, max_tokens_note=200):
-    """Multi-turn chat vault keys pe. Returns (name, text). Key nahi to (rule-based, '')."""
+def try_chat(messages, max_tokens_note=200, model=None):
+    """Multi-turn chat vault keys pe. model override (architect/editor) —
+    openrouter pe jaisa-bola model, direct providers pe default. Key nahi to (rule-based, '')."""
     from .llm import chat
     vault = _load_json(VAULT, {"providers": {}})
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
             continue
+        m = model if (model and model != "auto" and prov == "openrouter") else _model_for(prov)
+        if model and model != "auto" and prov != "openrouter" and "/" in model:
+            m = model  # user jaanta hai — bhej do, fail to next provider
         for k in keys:
             key = k.get("key") if isinstance(k, dict) else k
             if not key:
                 continue
-            ok, txt = chat(url, key, _model_for(prov),
+            ok, txt = chat(url, key, m,
                            messages)
             if ok:
                 track_usage(f"{prov}/key", max_tokens_note)

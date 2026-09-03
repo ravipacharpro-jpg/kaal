@@ -69,7 +69,7 @@ class TestBrain(unittest.TestCase):
             ("m", '{"thinking": "list", "tool": {"name": "file_list", "args": {"path": "."}}}'),
             ("m", '{"thinking": "done", "done": "ok mock"}'),
         ]
-        brain.try_chat = lambda msgs: script.pop(0)
+        brain.try_chat = lambda msgs, **kw: script.pop(0)
         todos, summary, ep = brain.run("t", ask_cb=lambda q: True)
         self.assertEqual(summary, "ok mock")
         self.assertEqual(ep, "m")
@@ -130,6 +130,34 @@ class TestPower(unittest.TestCase):
         p = os.path.abspath("memory/.test-export.md")
         self.addCleanup(lambda: os.path.exists(p) and os.remove(p))
         self.assertIn("Export ho gaya", export_md(p))
+
+
+class TestCrossPlatform(unittest.TestCase):
+    def test_role_models(self):
+        from kaal.models.router import set_role_model, get_role_model
+        set_role_model("architect", "auto")
+        self.assertEqual(get_role_model("architect"), "auto")
+        try:
+            os.remove("config/model.json")
+        except OSError:
+            pass
+
+    def test_sandbox_defaults_off(self):
+        from kaal.skills.sandbox import enabled, available
+        self.assertFalse(enabled())
+        self.assertIsInstance(available(), bool)
+
+    def test_platform_detect(self):
+        from kaal.platform_adapt import detect, describe, data_dir
+        self.assertIn(detect(), ("termux", "linux", "macos", "windows"))
+        self.assertIn("Platform", describe())
+        self.assertTrue(data_dir())
+
+    def test_parallel_safe_order(self):
+        from kaal.agent import run_task
+        r = run_task("file list karo aur github repo check karo", ask_cb=lambda q: True)
+        self.assertEqual(r["status"], "done")
+        self.assertEqual(len(r["todos"]), 2)
 
 
 if __name__ == "__main__":

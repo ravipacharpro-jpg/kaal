@@ -1,4 +1,4 @@
-"""Code skill — sandboxed python subprocess, timeout, output truncate (no dump)."""
+"""Code skill — docker sandbox (PC, opt-in) ya subprocess (default/Termux)."""
 import subprocess, sys
 
 TIMEOUT = 30
@@ -8,6 +8,12 @@ def run_python(code, timeout=TIMEOUT):
     for b in BLOCKED:
         if b in code:
             return f"Block: {b} sandbox me allowed nahi"
+    try:
+        from . import sandbox as _sb
+        if _sb.enabled() and _sb.available():
+            return "[docker] " + _sb.run_docker(code, timeout)
+    except Exception:
+        pass
     try:
         r = subprocess.run([sys.executable, "-c", code[:4000]],
                            capture_output=True, text=True, timeout=timeout)

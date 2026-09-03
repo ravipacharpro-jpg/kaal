@@ -19,15 +19,15 @@ def read():
     except OSError:
         return ""
 
-def draft(task):
+def draft(task, model=None):
     """Brain key ho to model se plan, warna decompose se."""
     try:
-        from .models.router import has_keys, try_chat
+        from .models.router import has_keys, try_chat, get_role_model
         if has_keys():
-            ok_txt = None
             name, txt = try_chat([
                 {"role": "system", "content": "Short numbered step plan de (max 6 steps), sirf steps, Hindi."},
-                {"role": "user", "content": task[:500]}])
+                {"role": "user", "content": task[:500]}],
+                model=model or get_role_model("architect"))
             if txt:
                 steps = [l.strip("0123456789. )") for l in txt.splitlines() if l.strip()][:6]
                 steps = [s for s in steps if s]

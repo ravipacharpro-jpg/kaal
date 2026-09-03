@@ -21,6 +21,7 @@ from ..models.ollama import status_line
 from ..models.ollama import PRESETS as OLLAMA_PRESETS, pull as ollama_pull, detect as ollama_detect
 from ..models.router import add_user_key, budget_status, list_endpoints
 from ..models.router import POPULAR_MODELS, get_model, set_model
+from ..models.router import get_role_model, set_role_model
 from ..platform_adapt import describe as plat_describe
 from ..scheduler import add as sched_add, due as sched_due
 from ..storage import startup_check
@@ -234,6 +235,22 @@ def main_loop():
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue
+        if task.startswith("/sandbox"):
+            from ..skills.sandbox import available as _sb_av
+            parts = task.split()
+            if len(parts) < 2:
+                on = cfg_all().get("sandbox", {}).get("docker", False)
+                console.print(f"[dim]Docker sandbox: {'ON' if on else 'OFF'} | docker mili: {'haan' if _sb_av() else 'nahi'}[/]")
+                console.print("[dim]Use: /sandbox on|off (PC pe docker chahiye, Termux pe nahi chalega)[/]")
+                continue
+            cfg = cfg_all()
+            cfg.setdefault("sandbox", {})["docker"] = parts[1].lower() == "on"
+            import json as _js, os as _os
+            _p = _os.path.join(_os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "config")), "sandbox.json")
+            with open(_p, "w", encoding="utf-8") as _f:
+                _js.dump({"docker": parts[1].lower() == "on"}, _f, indent=2)
+            console.print(f"[green]Sandbox docker: {parts[1].lower()}[/]")
+            continue
         if task == "/checkpoint":
             from ..skills.files import checkpoint as _cp
             console.print(f"[green]{_cp('manual')}[/]")
@@ -313,9 +330,14 @@ def main_loop():
             console.print(f"[green]{ollama_pull(parts[1].strip())}[/]")
             continue
         if task.startswith("/model"):
-            parts = task.split(" ", 1)
+            parts = task.split()
+            if len(parts) == 3 and parts[1] in ("architect", "editor"):
+                name = parts[2].strip()
+                pick = POPULAR_MODELS[int(name) - 1] if name.isdigit() and 1 <= int(name) <= len(POPULAR_MODELS) else name
+                console.print(f"[green]{set_role_model(parts[1], pick)}[/]")
+                continue
             if len(parts) < 2:
-                console.print(f"[dim]Current: {get_model()}[/]")
+                console.print(f"[dim]Default: {get_model()} | architect: {get_role_model('architect')} | editor: {get_role_model('editor')}[/]")
                 t = Table(show_header=False, border_style="dim", box=None)
                 t.add_column("#", style="dim")
                 t.add_column("Model", style="bold")
@@ -323,7 +345,7 @@ def main_loop():
                     t.add_row(str(i), m)
                 console.print(Panel(t, title="🧠 Models (OpenRouter 75+ via openrouter key)",
                                     border_style=th.ACCENT, padding=(0, 1)))
-                console.print("[dim]Use: /model anthropic/claude-sonnet-4  ya  /model auto[/]")
+                console.print("[dim]Use: /model 5 · /model architect 3 · /model editor 5[/]")
                 continue
             name = parts[1].strip()
             pick = POPULAR_MODELS[int(name) - 1] if name.isdigit() and 1 <= int(name) <= len(POPULAR_MODELS) else name

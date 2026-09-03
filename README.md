@@ -5,10 +5,18 @@ Premium Rich TUI: Todo panel + 1-line live Hindi status, TUI me code dump nahi.
 
 ## Install
 ```bash
+# Termux / Linux / macOS
 git clone https://github.com/ravipacharpro-jpg/kaal.git
 cd kaal
 bash install/install.sh
 # phir: kaal  (ya python3 -m kaal)
+```
+```bat
+REM Windows (cmd, Python 3.11+)
+git clone https://github.com/ravipacharpro-jpg/kaal.git
+cd kaal
+install\install.bat
+REM phir: install\kaal.bat  (ya python -m kaal)
 ```
 
 ## Use
@@ -21,7 +29,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/schedule` `/perm` `/quit`
+TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/recipe` `/checkpoint` `/rewind` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)

@@ -45,12 +45,15 @@ def _parse_json(txt):
         return None
 
 def run(task, live_cb=None, ask_cb=None, max_iters=10):
-    """LLM brain loop. Returns (todos, summary, endpoint)."""
+    """LLM brain loop. Architect plan + editor execute (Aider style).
+    Returns (todos, summary, endpoint)."""
+    from .router import get_role_model
+    editor = get_role_model("editor")
     msgs = [{"role": "system", "content": SYSTEM + _tools.spec_text() + _context(task)},
             {"role": "user", "content": f"TASK: {task}"}]
     todos, endpoint = [], "rule-based"
     for step in range(max_iters):
-        name, txt = try_chat(msgs)
+        name, txt = try_chat(msgs, model=editor)
         if not txt:
             return todos, "", "rule-based"  # key fail — caller legacy pe jayega
         endpoint = name

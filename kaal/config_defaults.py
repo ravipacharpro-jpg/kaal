@@ -28,4 +28,5 @@ DEFAULTS = {
     "tui": {"library": "rich", "colors": True, "status_bar": True,
             "show_tool_indicators": True, "no_code_dump": True},
     "storage": {"max_mb": 500, "cleanup_days": 30, "auto_clean_startup": True},
+    "sandbox": {"docker": False},
 }
