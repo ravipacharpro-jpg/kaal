@@ -11,6 +11,7 @@ from ..models.router import list_endpoints, budget_status, add_user_key
 from ..models.ollama import status_line
 from ..memory.store import recent
 from ..agents.specialists import AGENTS
+from ..scheduler import add as sched_add, due as sched_due
 
 console = Console()
 
@@ -56,7 +57,7 @@ def show_agents():
 
 def main_loop():
     show_header()
-    console.print("[dim]Commands: /endpoints /budget /memory /agents /key /quit | seedha task likho[/]\n")
+    console.print("[dim]Commands: /endpoints /budget /memory /agents /key /schedule /quit | seedha task likho[/]\n")
     while True:
         try:
             task = Prompt.ask("[bold green]❯[/]").strip()
@@ -86,6 +87,20 @@ def main_loop():
                 console.print("[dim]Use: /key openai sk-... (provider: openai groq openrouter together mistral gemini xai)[/]")
                 continue
             console.print(f"[green]{add_user_key(parts[1], parts[2])}[/]")
+            continue
+        if task.startswith("/schedule"):
+            parts = task.split(" ", 2)
+            if len(parts) < 3:
+                jobs = sched_due()
+                console.print(f"[dim]Due jobs: {len(jobs)}[/]")
+                for j in jobs[:5]:
+                    console.print(f"⏰ {j['task'][:60]}")
+                console.print("[dim]Use: /schedule 86400 task yahan[/]")
+                continue
+            try:
+                console.print(f"[green]{sched_add(parts[2], int(parts[1]))}[/]")
+            except ValueError:
+                console.print("[red]Interval number me do: /schedule 86400 task[/]")
             continue
         live_line = {"msg": "soch raha hu..."}
         def live_cb(m): live_line["msg"] = m

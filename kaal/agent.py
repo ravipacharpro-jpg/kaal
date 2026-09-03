@@ -5,6 +5,7 @@ from .skills import code as _code
 from .skills import browser as _browser
 from .mcp import github as _gh, registry as _mcp
 from .memory import store as _mem
+from .memory import patterns as _pat
 from .agents.orchestrator import decompose
 
 SENSITIVE = ("delete", "rm ", "format", "password", "token", "key")
@@ -55,6 +56,13 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
     jobs = decompose(task)
     use_multi = multi if multi is not None else len(jobs) > 1
     todos = [{"title": j["step"], "status": "pending", "agent": j["agent"]} for j in jobs]
+    hint = ""
+    try:
+        hint = _pat.suggest(task)
+        if hint and live_cb:
+            live_cb("purana similar task mila — pattern use kar raha hu")
+    except Exception:
+        pass
     if needs_permission(task) and ask_cb and not ask_cb(f"Sensitive lag raha hai: {task[:80]} — aage badhu?"):
         return {"status": "denied", "summary": "User ne permission deny ki",
                 "todos": todos, "endpoint": ep["name"], "mode": "single"}
@@ -88,10 +96,14 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
     try:
         track_usage(ep["name"], 100 * max(1, len(todos)))
         _mem.save(task, base[:400])
+        _pat.learn(task, base[:300])
     except Exception:
         pass
     b = budget_status()
-    return {"status": "done", "summary": (base + llm_note)[:400],
+    summ = (base + llm_note)[:400]
+    if hint:
+        summ = f"{hint[:150]} | " + summ
+    return {"status": "done", "summary": summ,
             "todos": todos, "endpoint": ep["name"],
             "mode": "multi" if use_multi else "single",
             "budget": f"{b['used']}/5000 ({b['mode']})"}
