@@ -8,6 +8,7 @@ from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, BarColumn, TextColumn
 from ..agent import run_task
 from ..models.router import list_endpoints, budget_status, add_user_key
+from ..models.ollama import status_line
 from ..memory.store import recent
 from ..agents.specialists import AGENTS
 
@@ -24,6 +25,7 @@ def show_endpoints():
         lim = "∞" if e["daily_limit"] == -1 else str(e["daily_limit"])
         t.add_row(str(i), e["name"], lim, e["desc"][:40])
     console.print(t)
+    console.print(f"[dim]{status_line()}[/]")
 
 def show_todos(todos):
     t = Table(title="Todo", show_header=True)
