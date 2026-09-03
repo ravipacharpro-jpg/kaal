@@ -4,6 +4,8 @@ Key nahi to brain inactive, legacy rule path chalta hai.
 """
 import json, re
 from ..skills import tools as _tools
+from ..skills import rules as _rules
+from ..memory.store import recent as _recent
 from .router import try_chat
 
 SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
@@ -13,7 +15,25 @@ SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
           '{"thinking": "...", "done": "final summary max 3 lines"}\n'
           "RULES: code TUI me mat dikhao, sirf summary. "
           "file_edit/file_delete se pehle soch me approval mango (tool khud puchega). "
-          "Pehle file_read karke dekho, phir edit karo. Max 8 steps me khatm karo.\n")
+          "Pehle file_read/repo_scan se context lo, phir edit karo. "
+          "SELF-CORRECTION: tool error/fail aaye to galti note karke 2 baar alag approach try karo, "
+          "phir bhi fail to done me rukawat + wajah likho. Max 10 steps me khatm karo.\n")
+
+def _context(task):
+    parts = []
+    try:
+        sk = _rules.match(task)
+        if sk:
+            parts.append("LOADED SKILLS:\n" + sk)
+    except Exception:
+        pass
+    try:
+        rows = _recent(3)
+        if rows:
+            parts.append("PAST TASKS:\n" + "\n".join(f"- {t[:60]} => {s[:100]}" for t, s in rows))
+    except Exception:
+        pass
+    return ("\n\n" + "\n\n".join(parts)) if parts else ""
 
 def _parse_json(txt):
     m = re.search(r"\{.*\}", txt, re.S)
@@ -24,9 +44,9 @@ def _parse_json(txt):
     except Exception:
         return None
 
-def run(task, live_cb=None, ask_cb=None, max_iters=8):
+def run(task, live_cb=None, ask_cb=None, max_iters=10):
     """LLM brain loop. Returns (todos, summary, endpoint)."""
-    msgs = [{"role": "system", "content": SYSTEM + _tools.spec_text()},
+    msgs = [{"role": "system", "content": SYSTEM + _tools.spec_text() + _context(task)},
             {"role": "user", "content": f"TASK: {task}"}]
     todos, endpoint = [], "rule-based"
     for step in range(max_iters):

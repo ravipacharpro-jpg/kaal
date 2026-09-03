@@ -4,6 +4,7 @@ Har tool: name, desc, params, fn. Output summary-truncated (no dump).
 from . import files as _f
 from . import code as _c
 from . import browser as _b
+from . import dev as _d
 from ..mcp import github as _gh
 from ..memory.store import recent as _recent
 
@@ -40,6 +41,18 @@ def _t_memory_recall(a):
     rows = _recent(int(a.get("n", 5)))
     return " | ".join(f"{t[:50]}→{s[:80]}" for t, s in rows)[:800] or "memory khaali"
 
+def _t_repo_scan(a):
+    return _d.repo_map(a.get("path", "."))[:2000]
+
+def _t_test_run(a):
+    return _d.test_run(a.get("cmd", "python3 -m pytest -q"))[:1000]
+
+def _t_pr_open(a):
+    ask = a.get("_ask")
+    if ask and not ask(f"PR kholu: {a.get('title','kaal: auto fix')[:80]}?"):
+        return "PR cancel — permission deny"
+    return _d.pr_open(a.get("title", "kaal: auto fix"), a.get("body", ""))[:300]
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho", "params": "path",
      "fn": _t_file_read},
@@ -61,6 +74,12 @@ TOOLS = [
      "fn": _t_github_issues},
     {"name": "memory_recall", "desc": "Purane tasks/summary dekho", "params": "n?",
      "fn": _t_memory_recall},
+    {"name": "repo_scan", "desc": "Codebase structure map karo", "params": "path?",
+     "fn": _t_repo_scan},
+    {"name": "test_run", "desc": "Tests chalao aur PASS/FAIL summary lo",
+     "params": "cmd?", "fn": _t_test_run},
+    {"name": "pr_open", "desc": "gh CLI se PR kholo", "params": "title, body?",
+     "fn": _t_pr_open, "needs_approval": True},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}
