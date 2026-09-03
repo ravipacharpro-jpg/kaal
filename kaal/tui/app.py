@@ -1,10 +1,11 @@
 """Kaal premium Rich TUI — OpenCode style.
-Todo panel + 1-line live, summary only (no code dump).
+Clean monospace, single cyan accent, todo + live + summary.
 Wide screen = side-by-side, Termux narrow = stacked.
 """
 from rich.align import Align
 from rich.columns import Columns
 from rich.console import Console, Group
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
@@ -12,6 +13,7 @@ from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
+from rich.console import Console as _C
 
 from ..agent import run_task
 from ..agents.orchestrator import PERSONAS as AGENT_PERSONAS
@@ -26,6 +28,7 @@ from ..platform_adapt import describe as plat_describe
 from ..scheduler import add as sched_add, due as sched_due
 from ..storage import startup_check
 from . import theme as th
+from .brand import brand, agent_name
 
 console = Console()
 
@@ -34,32 +37,29 @@ def _status_strip():
     parts = []
     try:
         b = budget_status()
-        parts.append(f" {b['used']}/{b['budget']} · {b['mode']}")
+        parts.append(f"[dim]{b['used']}/{b['budget']}[/] · {b['mode']}")
     except Exception:
         pass
     try:
         eps = list_endpoints()
-        parts.append(f" {len(eps)} endpoints")
+        parts.append(f"[dim]{len(eps)} endpoints[/]")
     except Exception:
         pass
     try:
-        parts.append(plat_describe().replace(" ", ""))
+        parts.append(f"[dim]{plat_describe().replace(' ', '')}[/]")
     except Exception:
         pass
-    return "    ".join(parts)
+    return " · ".join(parts)
 
 
 def show_header():
-    console.print(Panel(
-        Align.center(Text.from_markup(
-            f"[bold {th.ACCENT}] KAAL[/]  [dim]— Ahead of Time[/]\n"
-            "[dim]autonomous agent · Termux / Linux / macOS / Windows[/]")),
-        border_style=th.ACCENT, padding=(1, 4)))
-    console.print(f"[dim]{_status_strip()}[/]")
+    console.print()
+    console.print(brand())
     try:
         console.print(f"[dim]{startup_check()}[/]")
     except Exception:
         pass
+    console.print(f"[dim]{_status_strip()}[/]")
     console.print(Rule(style="dim"))
     console.print(th.FOOTER_HINT + "\n")
 
@@ -82,16 +82,16 @@ def show_endpoints():
 
 def show_todos(todos):
     t = Table(show_header=True, header_style=f"bold {th.ACCENT}",
-              border_style="dim", box=None, pad_edge=False)
+              border_style="dim", box=None, pad_edge=False, show_lines=False)
     t.add_column("", width=2)
     t.add_column("Kaam", style="bold")
-    t.add_column("Agent", style="magenta")
+    t.add_column("Agent", style=DIM)
     t.add_column("Status", justify="right")
-    icon = {"pending": "[dim][/]", "doing": "[yellow]→[/]", "done": "[green][/]"}
+    icon = {"pending": "[dim]·[/]", "doing": "[yellow]→[/]", "done": "[green]✔[/]"}
     for td in todos:
         t.add_row(icon.get(td["status"], "?"), td["title"][:46],
                   td.get("agent", "-")[:14], td["status"])
-    return Panel(t, title="[bold]Todo[/]", border_style=th.ACCENT, padding=(0, 1))
+    return Panel(t, title="[bold] Tasks[/]", border_style="dim", padding=(0, 1))
 
 
 def show_result(res):
@@ -100,10 +100,10 @@ def show_result(res):
         Markdown(res["summary"][:600]),
         Text(f"via {res['endpoint']} · {res.get('mode', 'single')} · "
              f"{res.get('budget', '')} · memory saved",
-             style="dim"),
+             style=DIM),
     )
     result = Panel(body, title="[bold green] Result[/]",
-                   border_style=th.OK, padding=(1, 2))
+                    border_style="dim", padding=(1, 2))
     todos = show_todos(res["todos"])
     if wide:
         console.print(Columns([todos, result], equal=True, expand=True))
@@ -185,10 +185,10 @@ def _run_with_live(task):
                         t.append(line + "\n", style="cyan")
                     else:
                         t.append(line + "\n")
-                console.print(Panel(t, title=" Approval", border_style="yellow",
+                console.print(Panel(t, title="[bold yellow] Approval[/]", border_style="yellow",
                                     padding=(0, 1)))
-                return Confirm.ask("Aage badhu?")
-            return Confirm.ask(f"  {q}")
+                return Confirm.ask("[bold yellow]Aage badhu?[/]")
+            return Confirm.ask(f"[bold yellow]  {q}[/]")
 
         res = run_task(task, live_cb=wrap,
                        ask_cb=ask_colored,
@@ -202,7 +202,7 @@ def main_loop():
     show_header()
     while True:
         try:
-            task = Prompt.ask("[bold green][/]").strip()
+            task = Prompt.ask(f"[bold {th.ACCENT}]{agent_name()}[/] [dim]›[/]").strip()
         except (EOFError, KeyboardInterrupt):
             console.print("\n[yellow]Kaal band. Phir milenge.[/]")
             break

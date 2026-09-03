@@ -1,12 +1,17 @@
-"""Kaal theme — OpenCode-style premium look, Termux-safe.
-Single accent system, rounded panels, dim status strips.
+"""Kaal theme — OpenCode-style premium look.
+Clean monochrome + single cyan accent. Subtle, premium.
 """
 ACCENT = "cyan"
 OK = "green"
 WARN = "yellow"
 ERR = "red"
 DIM = "dim"
+BRIGHT = "bright_white"
+MAGENTA = "magenta"
 
-BANNER = "[bold cyan]KAAL[/] [dim]· Ahead of Time · v0.1.0[/]"
+NAME = "kaal"
+VERSION = "v0.1.0"
+TAGLINE = "autonomous agent · ahead of time"
+
 FOOTER_HINT = ("[dim]/endpoints /budget /memory /user /thread /trace /agents /key /model /ollama /schedule "
-               "/perm /plan /approve /recipe /plugin /voice /checkpoint /rewind /export /quit — ya seedha task likho[/]")
+               "/perm /plan /approve /recipe /plugin /voice /checkpoint /rewind /export /quit [dim]· seedha task likho[/]")
