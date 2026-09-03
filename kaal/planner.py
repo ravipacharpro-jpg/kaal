@@ -22,8 +22,8 @@ def read():
 def draft(task, model=None):
     """Brain key ho to model se plan, warna decompose se."""
     try:
-        from .models.router import has_keys, try_chat, get_role_model
-        if has_keys():
+        from .models.router import brain_active, try_chat, get_role_model
+        if brain_active():
             name, txt = try_chat([
                 {"role": "system", "content": "Short numbered step plan de (max 6 steps), sirf steps, Hindi."},
                 {"role": "user", "content": task[:500]}],

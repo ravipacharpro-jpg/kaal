@@ -192,8 +192,18 @@ def _model_for(prov):
     return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
 
 def try_chat(messages, max_tokens_note=200, model=None):
-    """Multi-turn chat vault keys pe. model override (architect/editor) —
-    openrouter pe jaisa-bola model, direct providers pe default. Key nahi to (rule-based, '')."""
+    """Pehle keyless Ollama local, phir vault keys. Returns (name, text).
+    Dono nahi to (rule-based, '') — caller legacy rule path pe jayega.
+    NOTE: builtin free-tier list me jinke paas key nahi, wo call nahi hote
+    (sirf display/selection ke liye hain) — key vault me add karo ya Ollama chalao."""
+    from . import ollama as _ol
+    try:
+        ok, txt = _ol.chat(messages)
+        if ok:
+            track_usage("ollama_local", max_tokens_note)
+            return "ollama_local", txt
+    except Exception:
+        pass
     from .llm import chat
     vault = _load_json(VAULT, {"providers": {}})
     for prov, keys in vault.get("providers", {}).items():
@@ -220,6 +230,17 @@ def has_keys():
         if isinstance(keys, list) and any((k.get("key") if isinstance(k, dict) else k) for k in keys):
             return True
     return False
+
+def brain_active():
+    """Brain tab jab vault key ho YA Ollama local chal raha ho (keyless AI)."""
+    if has_keys():
+        return True
+    try:
+        from . import ollama as _ol
+        ok, _ = _ol.detect()
+        return ok
+    except Exception:
+        return False
 
 def try_llm(prompt, max_tokens_note=100):
     """User vault keys pe real LLM call, fallback chain. Returns (name, text).

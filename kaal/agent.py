@@ -1,5 +1,5 @@
 """Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
-from .models.router import select_endpoint, track_usage, budget_status, try_llm, has_keys
+from .models.router import select_endpoint, track_usage, budget_status, try_llm, brain_active
 from .models import brain as _brain
 from .skills import files as _files
 from .skills import code as _code
@@ -66,7 +66,7 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
     """Ek task chalao. Vault key ho to LLM BRAIN, nahi to legacy rule path.
     live_cb = 1-line Hindi update. Code dump nahi."""
     # --- BRAIN PATH (Claude-style): model har step decide karta hai ---
-    if has_keys():
+    if brain_active():
         if live_cb:
             live_cb("brain active — model soch raha hu")
         try:

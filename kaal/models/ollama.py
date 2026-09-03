@@ -22,6 +22,28 @@ def status_line():
     ms = ", ".join(models) if models else "koi model load nahi"
     return f"Ollama: chal raha ✅ models: {ms}"
 
+def chat(messages, timeout=60):
+    """Keyless local LLM call. Returns (ok, text). Ollama band to (False, reason)."""
+    ok, models = detect()
+    if not ok:
+        return False, "ollama-off"
+    model = models[0] if models else "llama3.2"
+    body = json.dumps({"model": model, "messages": messages,
+                       "stream": False,
+                       "options": {"num_predict": 500}}).encode()
+    for base in URLS:
+        try:
+            req = urllib.request.Request(base + "/api/chat", data=body,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                d = json.load(r)
+            txt = (d.get("message", {}).get("content", "") or "").strip()[:2000]
+            if txt:
+                return True, txt
+        except Exception:
+            continue
+    return False, "ollama-fail"
+
 # Hermes-style uncensored + popular local presets (ollama pull <name>)
 PRESETS = [
     "nous-hermes2", "llama3.2:1b", "llama3.2:3b", "phi3:mini",

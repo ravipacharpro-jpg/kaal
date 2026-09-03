@@ -1,7 +1,19 @@
 """Orchestrator — task decompose, specialist assign, result aggregate.
-Multi-agent mode: coder / researcher / analyzer / github_specialist.
-Summary only, no code dump.
+Har specialist ka apna persona (role prompt) hai — legacy path me live/summary
+me role dikhta hai, brain path me persona context prompt me jata hai.
+Honest note: routing keyword-based hai; dimaag (reasoning) brain/LLM lagata hai.
 """
+
+PERSONAS = {
+    "coder": "Coder: pehle repo_scan/file_read se context, chhote diffs, test_run se verify.",
+    "researcher": "Researcher: 2-3 sources browser_fetch, facts + URLs ke saath summary.",
+    "analyzer": "Analyzer: data compare karke table-style nishkarsh, andaza nahi.",
+    "github_specialist": "GitHuber: repo/issues dico, numbers exact (stars, issue #).",
+    "general": "Generalist: seedha kaam, short summary.",
+}
+
+def persona(agent):
+    return PERSONAS.get(agent, PERSONAS["general"])
 
 def classify(step):
     s = step.lower()

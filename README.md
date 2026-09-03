@@ -37,14 +37,17 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollam
 /schedule 86400 task        # roz auto-chalne wala kaam
 ```
 
-## Design
-- **TUI (Rich):** Todo auto `○/→/✓` + agent column, fixed 1-line live `⚡ abhi file read kar raha hu`, summary only
-- **Model router:** OmniRoute/auto default keyless + 20 free-tier endpoints, agent khud select/rotate karta hai; vault keys pe real LLM calls + fallback chain
-- **Skills:** files (safe, delete pe permission), code sandbox (30s timeout), browser (Playwright MCP live, fallback light-fetch), GitHub MCP
-- **Multi-agent:** coder / researcher / analyzer / github_specialist auto-assign
-- **Economy:** config/economy.json se budget, 80% pe auto/fast saver, per-endpoint daily tracking
-- **Memory:** SQLite sessions + pattern learning (similar task suggest), 30-din auto-cleanup
-- **Platform:** auto-detect Termux/Linux/macOS/Windows, storage quota + startup auto-clean, session resume
+## Design (honest)
+- **TUI (Rich):** Todo auto `○/→/✓` + agent column, fixed 1-line live, summary only (code dump nahi)
+- **Brain 2 modes:** vault API key ho YA Ollama local chal raha ho to LLM tool-loop (10 tools + personas + self-correction); nahi to keyword rule path (fast, par AI nahi — seedha likha hai)
+- **Endpoints:** 20 configured targets; bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
+- **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
+- **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
+- **Skills:** files (backup+undo+checkpoints), code, browser (Playwright/HTTP), GitHub, git (commit/changelog), bash allowlist
+- **Multi-agent:** 5 personas, desktop pe parallel, Termux pe sequential
+- **Economy:** daily budget, 80% pe saver mode, per-endpoint tracking
+- **Memory:** SQLite + patterns + PLAN.md + recipes + session export
+- **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
 
 ## Structure
 ```
@@ -55,4 +58,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.0 — sab phases complete, verified on Termux.
+v0.1.1-dev — diagnose fixes in. Tests: `python3 -m unittest discover tests` (22 pass, cwd-independent).
+Verify: `kaal "file read README.md"`.

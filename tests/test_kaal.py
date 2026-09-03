@@ -1,7 +1,10 @@
-"""Kaal test suite — stdlib unittest, zero deps. Run: python3 -m unittest discover tests"""
+"""Kaal test suite — stdlib unittest, zero deps. Run: repo root se
+python3 -m unittest discover tests  (ya pytest). Cwd-independent: tmp repo root pe."""
 import os, sys, unittest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, REPO)
+os.chdir(REPO)
 
 
 class TestRouter(unittest.TestCase):
@@ -54,6 +57,16 @@ class TestSandbox(unittest.TestCase):
         from kaal.skills.code import run_python
         self.assertEqual(run_python("print(2+2)"), "4")
         self.assertIn("Block", run_python("import os; os.system('x')"))
+
+    def test_code_ast_bypass_blocked(self):
+        from kaal.skills.code import run_python
+        # diagnose me mile bypass: arbitrary file read via open()
+        self.assertIn("Block", run_python("print(open('x').read())"))
+        self.assertIn("Block", run_python("getattr(__import__('o'+'s'),'sy'+'stem')('x')"))
+        self.assertIn("Block", run_python("().__class__.__base__('x')"))
+        self.assertIn("Block", run_python("eval('1')"))
+        # legit code chalta hai
+        self.assertEqual(run_python("x=[i*i for i in range(4)]\nprint(sum(x))"), "14")
 
     def test_shell_allowlist(self):
         from kaal.skills.shell import run
@@ -130,6 +143,29 @@ class TestPower(unittest.TestCase):
         p = os.path.abspath("memory/.test-export.md")
         self.addCleanup(lambda: os.path.exists(p) and os.remove(p))
         self.assertIn("Export ho gaya", export_md(p))
+
+
+class TestHonest(unittest.TestCase):
+    """prompt.cpp diagnose ke fixes lock karo."""
+
+    def test_personas_exist(self):
+        from kaal.agents.orchestrator import PERSONAS, persona
+        for a in ("coder", "researcher", "analyzer", "github_specialist"):
+            self.assertIn(a, PERSONAS)
+            self.assertTrue(len(persona(a)) > 20)
+
+    def test_brain_keyless_ollama_path(self):
+        from kaal.models import router
+        # Ollama band + key nahi = rule-based (fail-soft, crash nahi)
+        self.assertEqual(router.try_chat([{"role": "user", "content": "hi"}]),
+                         ("rule-based", ""))
+        self.assertIsInstance(router.brain_active(), bool)
+
+    def test_builtin_free_need_keys(self):
+        from kaal.models.router import BUILTIN_FREE
+        keyless = [e for e in BUILTIN_FREE if e["key"] in ("", "local")]
+        # keyless hone ka matlab callable nahi — sirf ollama_local real hai
+        self.assertIn("ollama_local", [e["name"] for e in keyless])
 
 
 class TestCrossPlatform(unittest.TestCase):

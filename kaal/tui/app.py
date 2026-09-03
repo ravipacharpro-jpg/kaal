@@ -14,7 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from ..agent import run_task
-from ..agents.specialists import AGENTS
+from ..agents.orchestrator import PERSONAS as AGENT_PERSONAS
 from ..config_store import get_all as cfg_all, set_perm as cfg_set_perm
 from ..memory.store import recent
 from ..models.ollama import status_line
@@ -140,12 +140,11 @@ def show_memory():
 def show_agents():
     t = Table(show_header=False, border_style="dim", box=None)
     t.add_column("Agent", style="bold magenta")
-    t.add_column("Role", style="dim")
-    roles = {"orchestrator": "task decompose", "coder": "code + review",
-             "researcher": "web research", "analyzer": "data + stats",
-             "github_specialist": "repos + issues"}
-    for a in AGENTS:
-        t.add_row("⬢ " + a, roles.get(a, "specialist"))
+    t.add_column("Persona", style="dim")
+    for a, role in AGENT_PERSONAS.items():
+        if a == "general":
+            continue
+        t.add_row("⬢ " + a, role[:70])
     console.print(Panel(t, title="🤖 Agents", border_style="magenta", padding=(0, 2)))
 
 

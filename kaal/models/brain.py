@@ -5,6 +5,7 @@ Key nahi to brain inactive, legacy rule path chalta hai.
 import json, re
 from ..skills import tools as _tools
 from ..skills import rules as _rules
+from ..agents.orchestrator import PERSONAS
 from ..memory.store import recent as _recent
 from .router import try_chat
 
@@ -21,6 +22,11 @@ SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
 
 def _context(task):
     parts = []
+    try:
+        pa = "\n".join(f"- {k}: {v}" for k, v in PERSONAS.items())
+        parts.append("SPECIALIST PERSONAS (tool results ko inki nazar se dekho):\n" + pa)
+    except Exception:
+        pass
     try:
         sk = _rules.match(task)
         if sk:
