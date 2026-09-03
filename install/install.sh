@@ -5,7 +5,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "🤖 Kaal install — samay se aage"
+echo "🤖 Kaal install — Ahead of Time"
 python3 --version || { echo "❌ python3 chahiye"; exit 1; }
 
 # Termux detect: pkg available?

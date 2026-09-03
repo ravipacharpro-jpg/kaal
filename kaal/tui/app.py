@@ -19,7 +19,7 @@ from ..platform_adapt import describe as plat_describe
 console = Console()
 
 def show_header():
-    console.print(Panel.fit("🤖 [bold cyan]KAAL[/] — [dim]samay se aage[/]\n[dim]Termux / Linux / macOS / Windows[/]",
+    console.print(Panel.fit("🤖 [bold cyan]KAAL[/] — [dim]Ahead of Time[/]\n[dim]Termux / Linux / macOS / Windows[/]",
                             border_style="cyan"))
     try:
         console.print(f"[dim]{plat_describe()}[/]")

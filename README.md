@@ -1,4 +1,4 @@
-# Kaal — samay se aage
+# Kaal — Ahead of Time
 
 Fully autonomous AI agent — Termux / Linux / macOS / Windows.
 Premium Rich TUI: Todo panel + 1-line live Hindi status, TUI me code dump nahi.

@@ -1,2 +1,2 @@
-"""Kaal — samay se aage. Fully autonomous agent."""
+"""Kaal — Ahead of Time. Fully autonomous agent."""
 __version__ = "0.1.0"
