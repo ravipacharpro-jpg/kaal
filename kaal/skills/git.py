@@ -41,3 +41,31 @@ def auto_commit(message="", ask_cb=None):
     _git(["add", "-A"])
     code3, out3 = _git(["commit", "-m", message[:100]])
     return out3[:300] if code3 == 0 else f"Commit fail: {out3[:200]}"
+
+def changelog(limit=15, since=""):
+    """Git history se changelog (Git-Cliff style). Grouped: feat/fix/other."""
+    args = ["log", f"--max-count={int(limit)}", "--pretty=format:%h|%s",
+            "--no-merges"]
+    if since:
+        args.append(since + "..HEAD")
+    code, out = _git(args)
+    if code != 0:
+        return out
+    if not out:
+        return "Koi history nahi"
+    groups = {"feat": [], "fix": [], "other": []}
+    for line in out.splitlines():
+        h, _, msg = line.partition("|")
+        ml = msg.lower()
+        if ml.startswith(("feat", "add", "kaal")):
+            groups["feat"].append(f"{h} {msg[:70]}")
+        elif ml.startswith(("fix", "hotfix")):
+            groups["fix"].append(f"{h} {msg[:70]}")
+        else:
+            groups["other"].append(f"{h} {msg[:70]}")
+    parts = []
+    for name, items in (("✨ Features", groups["feat"]), ("🐛 Fixes", groups["fix"]),
+                        ("📦 Other", groups["other"])):
+        if items:
+            parts.append(name + "\n" + "\n".join(f"- {i}" for i in items[:10]))
+    return "\n\n".join(parts)[:1500]

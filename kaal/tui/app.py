@@ -18,6 +18,7 @@ from ..agents.specialists import AGENTS
 from ..config_store import get_all as cfg_all, set_perm as cfg_set_perm
 from ..memory.store import recent
 from ..models.ollama import status_line
+from ..models.ollama import PRESETS as OLLAMA_PRESETS, pull as ollama_pull, detect as ollama_detect
 from ..models.router import add_user_key, budget_status, list_endpoints
 from ..models.router import POPULAR_MODELS, get_model, set_model
 from ..platform_adapt import describe as plat_describe
@@ -232,6 +233,19 @@ def main_loop():
                 console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
+            continue
+        if task.startswith("/ollama"):
+            parts = task.split(" ", 1)
+            ok, models = ollama_detect()
+            if len(parts) < 2:
+                console.print(Panel(
+                    (f"Models: {', '.join(models) if models else 'koi nahi'}\n" if ok else "") +
+                    "Presets: " + ", ".join(OLLAMA_PRESETS),
+                    title=f"🦙 Ollama ({'live ✅' if ok else 'band — `ollama serve` karo'})",
+                    border_style=th.ACCENT, padding=(0, 1)))
+                console.print("[dim]Use: /ollama nous-hermes2[/]")
+                continue
+            console.print(f"[green]{ollama_pull(parts[1].strip())}[/]")
             continue
         if task.startswith("/model"):
             parts = task.split(" ", 1)

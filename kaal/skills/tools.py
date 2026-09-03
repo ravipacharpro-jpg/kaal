@@ -74,6 +74,9 @@ def _t_git_commit(a):
 def _t_bash_run(a):
     return _sh.run(a.get("cmd", ""), a.get("_ask"))[:800]
 
+def _t_git_changelog(a):
+    return _g.changelog(int(a.get("limit", 15) or 15), a.get("since", ""))[:1500]
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho (badi file: offset/lines do)",
      "params": "path, offset?, lines?", "fn": _t_file_read},
@@ -113,6 +116,8 @@ TOOLS = [
      "params": "message?", "fn": _t_git_commit, "needs_approval": True},
     {"name": "bash_run", "desc": "Allowlist bash command (ls git gh python3...)",
      "params": "cmd", "fn": _t_bash_run, "needs_approval": True},
+    {"name": "git_changelog", "desc": "Git history se grouped changelog",
+     "params": "limit?, since?", "fn": _t_git_changelog},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}
