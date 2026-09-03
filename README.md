@@ -58,5 +58,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.1-dev — diagnose fixes in. Tests: `python3 -m unittest discover tests` (22 pass, cwd-independent).
+v0.1.1-dev — diagnose fixes in. Tests: `python3 -m unittest discover tests` (24 pass, HOME/cwd-independent, CI on 3 OS).
 Verify: `kaal "file read README.md"`.

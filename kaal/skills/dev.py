@@ -6,11 +6,11 @@ import os, subprocess, shutil
 SKIP = {".git", "__pycache__", "node_modules", ".venv", ".nexus", "dist", "build"}
 
 def repo_map(root=".", max_files=60):
-    """Codebase structure summary: tree + file sizes. Scam-safe paths."""
-    root = os.path.abspath(os.path.expanduser(root))
-    home = os.path.expanduser("~")
-    if ".." in os.path.relpath(root, home).split(os.sep):
-        return "Unsafe path"
+    """Codebase structure summary: tree + file sizes. Repo/CWD/HOME anchor."""
+    from .files import _safe
+    root = _safe(root)
+    if not root or not os.path.isdir(root):
+        return "Unsafe path ya folder nahi mila"
     out = []
     n = 0
     for dirpath, dirs, files in os.walk(root):

@@ -100,6 +100,8 @@ class TestOrchestrator(unittest.TestCase):
 class TestPower(unittest.TestCase):
     def test_checkpoint_rewind(self):
         from kaal.skills import files as f
+        import shutil
+        shutil.rmtree("memory/backups", ignore_errors=True)  # stale state hatao
         d = os.path.abspath("memory/.test-tmp3")
         os.makedirs(d, exist_ok=True)
         self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
@@ -160,6 +162,21 @@ class TestHonest(unittest.TestCase):
         self.assertEqual(router.try_chat([{"role": "user", "content": "hi"}]),
                          ("rule-based", ""))
         self.assertIsInstance(router.brain_active(), bool)
+
+    def test_smart_decompose_fallback_no_keys(self):
+        from kaal.agents.orchestrator import decompose, classify_llm
+        # key/Ollama nahi to keyword fallback, LLM call nahi
+        self.assertEqual(classify_llm("code fix karo"), "coder")
+        jobs = decompose("code fix karo aur github check karo", smart=True)
+        self.assertEqual({j["agent"] for j in jobs}, {"coder", "github_specialist"})
+
+    def test_safe_repo_outside_home(self):
+        from kaal.skills.files import _safe
+        # repo root ke andar hamesha safe (HOME chahe kuch bhi ho)
+        self.assertIsNotNone(_safe("README.md"))
+        # bahar ka path unsafe
+        self.assertIsNone(_safe("/etc/passwd"))
+        self.assertIsNone(_safe("../../etc/passwd"))
 
     def test_builtin_free_need_keys(self):
         from kaal.models.router import BUILTIN_FREE

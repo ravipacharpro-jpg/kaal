@@ -5,12 +5,33 @@ import os, time
 MAX_READ_MB = 5
 BACKUP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "memory", "backups"))
 
+def _roots():
+    """Safe roots: repo root + CWD + HOME. Kisi ek ke andar = safe.
+    (Pehle sirf HOME tha — repo HOME ke bahar ho to legit files reject hoti thin.)"""
+    roots = set()
+    try:
+        roots.add(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+    except Exception:
+        pass
+    try:
+        roots.add(os.path.abspath(os.getcwd()))
+    except Exception:
+        pass
+    try:
+        roots.add(os.path.abspath(os.path.expanduser("~")))
+    except Exception:
+        pass
+    return roots
+
 def _safe(path):
     p = os.path.abspath(os.path.expanduser(path))
-    home = os.path.expanduser("~")
-    if ".." in os.path.relpath(p, home).split(os.sep):
-        return None
-    return p
+    for r in _roots():
+        try:
+            if os.path.commonpath([p, r]) == r:
+                return p
+        except ValueError:
+            pass
+    return None
 
 def read_file(path, max_chars=2000, offset=0, lines=0):
     """File padho. Badi file ke liye offset/lines se chunk me padho.
@@ -66,6 +87,7 @@ def _touch(p):
     """Path ko tracked list me dalo (checkpoint iska fresh backup lega)."""
     import json
     try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
         with open(_index_path(), encoding="utf-8") as f:
             idx = json.load(f)
     except Exception:
@@ -87,10 +109,13 @@ def checkpoint(tag="auto"):
     except Exception:
         idx = {}
     for p in list(idx):
+        bp = idx[p]
         if os.path.isfile(p):
             nb = _backup(p)  # current content ka fresh backup
             if nb:
                 idx[p] = nb
+        elif not (bp and os.path.isfile(bp)):
+            del idx[p]  # file bhi gayi, backup bhi — stale entry hatao
     try:
         with open(_index_path(), "w", encoding="utf-8") as f:
             json.dump(idx, f)
@@ -106,8 +131,11 @@ def checkpoint(tag="auto"):
     return f"Checkpoint: {cid} ({len(idx)} files tracked)"
 
 def _restore_idx(idx):
-    ok, fail = 0, 0
+    ok, skip = 0, 0
     for p, bp in idx.items():
+        if not (bp and os.path.isfile(bp)):
+            skip += 1
+            continue
         try:
             with open(bp, "rb") as f:
                 data = f.read(2000000)
@@ -115,8 +143,8 @@ def _restore_idx(idx):
                 f.write(data)
             ok += 1
         except OSError:
-            fail += 1
-    return ok, fail
+            skip += 1
+    return ok, skip
 
 def rewind():
     """Last checkpoint pe wapas. Pehle current state auto-save (redo = dobara rewind)."""
@@ -136,13 +164,13 @@ def rewind():
         json.dump(cur, f)
     with open(os.path.join(_cp_dir(), cps[-1]), encoding="utf-8") as f:
         idx = json.load(f)
-    ok, fail = _restore_idx(idx)
+    ok, skip = _restore_idx(idx)
     try:
         with open(_index_path(), "w", encoding="utf-8") as f:
             json.dump(idx, f)
     except OSError:
         pass
-    return f"Rewind: {ok} files wapas, {fail} fail (redo ke liye dobara /rewind)"
+    return f"Rewind: {ok} files wapas, {skip} skip (redo ke liye dobara /rewind)"
 
 def _backup(p):
     """Original ka timestamped backup + index. Returns backup path ya ''."""

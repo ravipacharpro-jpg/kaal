@@ -27,8 +27,28 @@ def classify(step):
         return "analyzer"
     return "general"
 
-def decompose(task):
-    """Bade task ko sub-tasks me todo. Max 4 agents parallel."""
+ROLES = ("coder", "researcher", "analyzer", "github_specialist", "general")
+
+def classify_llm(step):
+    """Brain mode me LLM se role chunwao; fail to keyword fallback.
+    (prompt.cpp sahi tha — keyword routing reasoning nahi hai.)"""
+    try:
+        from ..models.router import brain_active, try_chat
+        if not brain_active():
+            return classify(step)
+        _, txt = try_chat([
+            {"role": "system", "content": "Reply with EXACTLY one word: " + "/".join(ROLES)},
+            {"role": "user", "content": f"Task step: {step[:200]}"}])
+        t = (txt or "").strip().lower()
+        if t in ROLES:
+            return t
+    except Exception:
+        pass
+    return classify(step)
+
+def decompose(task, smart=False):
+    """Bade task ko sub-tasks me todo. Max 4 agents parallel.
+    smart=True (brain mode) to LLM se role, warna keyword."""
     parts = [p.strip() for p in task.replace("aur", ",").split(",") if p.strip()]
     if len(parts) <= 1 and len(task) > 80:
         parts = [task[i:i+80] for i in range(0, len(task), 80)][:3]
@@ -36,5 +56,6 @@ def decompose(task):
         parts = [task]
     jobs = []
     for p in parts[:4]:
-        jobs.append({"step": p, "agent": classify(p), "status": "pending"})
+        a = classify_llm(p) if smart else classify(p)
+        jobs.append({"step": p, "agent": a, "status": "pending"})
     return jobs

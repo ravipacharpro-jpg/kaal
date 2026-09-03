@@ -50,14 +50,21 @@ def _parse_json(txt):
     except Exception:
         return None
 
-def run(task, live_cb=None, ask_cb=None, max_iters=10):
+def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None):
     """LLM brain loop. Architect plan + editor execute (Aider style).
+    jobs = smart-decomposed todos (LLM roles) display ke liye.
     Returns (todos, summary, endpoint)."""
     from .router import get_role_model
     editor = get_role_model("editor")
+    plan_line = ""
+    if jobs:
+        plan_line = "\nPLAN (roles model ne diye): " + "; ".join(
+            f"[{j['agent']}] {j['step'][:60]}" for j in jobs) + "\nIs plan pe chalo."
     msgs = [{"role": "system", "content": SYSTEM + _tools.spec_text() + _context(task)},
-            {"role": "user", "content": f"TASK: {task}"}]
-    todos, endpoint = [], "rule-based"
+            {"role": "user", "content": f"TASK: {task}{plan_line}"}]
+    todos = [{"title": j["step"][:50], "status": "pending",
+              "agent": j["agent"]} for j in (jobs or [])]
+    endpoint = "rule-based"
     for step in range(max_iters):
         name, txt = try_chat(msgs, model=editor)
         if not txt:
@@ -72,6 +79,8 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10):
         if live_cb and think:
             live_cb(think)
         if "done" in d:
+            for td in todos:
+                td["status"] = "done"
             todos.append({"title": task[:50], "status": "done",
                           "agent": "brain", "result": str(d["done"])[:200]})
             return todos, str(d["done"])[:400], endpoint

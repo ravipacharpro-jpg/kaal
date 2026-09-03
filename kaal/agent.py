@@ -74,7 +74,8 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
         except Exception:
             pass
         try:
-            todos, summary, ep_name = _brain.run(task, live_cb, ask_cb)
+            jobs = decompose(task, smart=True)
+            todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs)
             if summary:  # brain ne complete kiya
                 _mcp.unload_idle(0)
                 daily, _p = _cfg.get_budget()
