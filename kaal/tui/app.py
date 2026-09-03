@@ -19,6 +19,7 @@ from ..config_store import get_all as cfg_all, set_perm as cfg_set_perm
 from ..memory.store import recent
 from ..models.ollama import status_line
 from ..models.router import add_user_key, budget_status, list_endpoints
+from ..models.router import POPULAR_MODELS, get_model, set_model
 from ..platform_adapt import describe as plat_describe
 from ..scheduler import add as sched_add, due as sched_due
 from ..storage import startup_check
@@ -231,6 +232,23 @@ def main_loop():
                 console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
+            continue
+        if task.startswith("/model"):
+            parts = task.split(" ", 1)
+            if len(parts) < 2:
+                console.print(f"[dim]Current: {get_model()}[/]")
+                t = Table(show_header=False, border_style="dim", box=None)
+                t.add_column("#", style="dim")
+                t.add_column("Model", style="bold")
+                for i, m in enumerate(POPULAR_MODELS, 1):
+                    t.add_row(str(i), m)
+                console.print(Panel(t, title="🧠 Models (OpenRouter 75+ via openrouter key)",
+                                    border_style=th.ACCENT, padding=(0, 1)))
+                console.print("[dim]Use: /model anthropic/claude-sonnet-4  ya  /model auto[/]")
+                continue
+            name = parts[1].strip()
+            pick = POPULAR_MODELS[int(name) - 1] if name.isdigit() and 1 <= int(name) <= len(POPULAR_MODELS) else name
+            console.print(f"[green]{set_model(pick)}[/]")
             continue
         res = _run_with_live(task)
         show_result(res)

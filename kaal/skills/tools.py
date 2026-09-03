@@ -5,6 +5,8 @@ from . import files as _f
 from . import code as _c
 from . import browser as _b
 from . import dev as _d
+from . import git as _g
+from . import shell as _sh
 from ..mcp import github as _gh
 from ..memory.store import recent as _recent
 
@@ -53,6 +55,18 @@ def _t_pr_open(a):
         return "PR cancel — permission deny"
     return _d.pr_open(a.get("title", "kaal: auto fix"), a.get("body", ""))[:300]
 
+def _t_git_status(a):
+    return _g.status()[:500]
+
+def _t_git_diff(a):
+    return _g.diff_summary()[:1200]
+
+def _t_git_commit(a):
+    return _g.auto_commit(a.get("message", ""), a.get("_ask"))[:300]
+
+def _t_bash_run(a):
+    return _sh.run(a.get("cmd", ""), a.get("_ask"))[:800]
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho", "params": "path",
      "fn": _t_file_read},
@@ -80,6 +94,14 @@ TOOLS = [
      "params": "cmd?", "fn": _t_test_run},
     {"name": "pr_open", "desc": "gh CLI se PR kholo", "params": "title, body?",
      "fn": _t_pr_open, "needs_approval": True},
+    {"name": "git_status", "desc": "Git working tree status", "params": "-",
+     "fn": _t_git_status},
+    {"name": "git_diff", "desc": "Changes ka diff summary", "params": "-",
+     "fn": _t_git_diff},
+    {"name": "git_commit", "desc": "Auto-commit (message auto, approval must)",
+     "params": "message?", "fn": _t_git_commit, "needs_approval": True},
+    {"name": "bash_run", "desc": "Allowlist bash command (ls git gh python3...)",
+     "params": "cmd", "fn": _t_bash_run, "needs_approval": True},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}

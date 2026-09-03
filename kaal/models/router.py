@@ -154,6 +154,30 @@ DEFAULT_MODELS = {
     "xai": "grok-beta", "anthropic": "claude-3-5-haiku-latest",
 }
 
+MODEL_FILE = os.path.join(CONFIG_DIR, "model.json")
+
+POPULAR_MODELS = [
+    "auto", "anthropic/claude-sonnet-4", "anthropic/claude-3-5-haiku",
+    "openai/gpt-4o", "openai/gpt-4o-mini", "google/gemini-2.0-flash",
+    "meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct",
+    "deepseek/deepseek-chat", "mistralai/mistral-small",
+    "x-ai/grok-beta", "cohere/command-r-plus",
+]
+
+def get_model():
+    d = _load_json(MODEL_FILE, {})
+    return d.get("default_model", "auto")
+
+def set_model(name):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(MODEL_FILE, "w", encoding="utf-8") as f:
+        json.dump({"default_model": name}, f, indent=2)
+    return f"Model set: {name}"
+
+def _model_for(prov):
+    m = get_model()
+    return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
+
 def try_chat(messages, max_tokens_note=200):
     """Multi-turn chat vault keys pe. Returns (name, text). Key nahi to (rule-based, '')."""
     from .llm import chat
@@ -166,7 +190,7 @@ def try_chat(messages, max_tokens_note=200):
             key = k.get("key") if isinstance(k, dict) else k
             if not key:
                 continue
-            ok, txt = chat(url, key, DEFAULT_MODELS.get(prov, "auto"),
+            ok, txt = chat(url, key, _model_for(prov),
                            messages)
             if ok:
                 track_usage(f"{prov}/key", max_tokens_note)
@@ -193,7 +217,7 @@ def try_llm(prompt, max_tokens_note=100):
             key = k.get("key") if isinstance(k, dict) else k
             if not key:
                 continue
-            ok, txt = chat(url, key, DEFAULT_MODELS.get(prov, "auto"),
+            ok, txt = chat(url, key, _model_for(prov),
                            [{"role": "user", "content": prompt[:1500]}])
             if ok:
                 track_usage(f"{prov}/key", max_tokens_note)

@@ -8,5 +8,5 @@ ERR = "red"
 DIM = "dim"
 
 BANNER = "[bold cyan]KAAL[/] [dim]· Ahead of Time · v0.1.0[/]"
-FOOTER_HINT = ("[dim]/endpoints /budget /memory /agents /key /schedule "
+FOOTER_HINT = ("[dim]/endpoints /budget /memory /agents /key /model /schedule "
                "/perm /quit — ya seedha task likho[/]")

@@ -8,3 +8,4 @@ memory/*.json
 config/vault.json
 config/endpoint_usage.json
 config/jobs.json
+config/model.json
