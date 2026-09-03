@@ -1,14 +1,45 @@
-"""kaal CLI entry."""
+"""kaal CLI entry. TUI default; flags: --history, --resume, --schedule, direct task."""
 import sys
-from .tui.app import main_loop, show_header
 from rich.console import Console
 
+console = Console()
+
 def main():
-    if len(sys.argv) > 1:
+    args = sys.argv[1:]
+    if args and args[0] == "--history":
+        from .memory.store import recent
+        rows = recent(10)
+        if not rows:
+            console.print("Memory khaali — pehla task karo.")
+            return
+        for i, (t, s) in enumerate(rows, 1):
+            console.print(f"{i}. {t[:60]}\n   → {s[:100]}")
+        return
+    if args and args[0] == "--resume":
+        from .memory.store import recent
         from .agent import run_task
-        res = run_task(" ".join(sys.argv[1:]), live_cb=print, ask_cb=lambda q: True)
-        Console().print(f"✅ {res['summary']} (via {res['endpoint']})")
+        rows = recent(1)
+        if not rows:
+            console.print("Resume ke liye koi session nahi.")
+            return
+        console.print(f"↩️ Resume: {rows[0][0][:80]}")
+        res = run_task(rows[0][0], live_cb=print, ask_cb=lambda q: True)
+        console.print(f"✅ {res['summary']} (via {res['endpoint']})")
+        return
+    if args and args[0] == "--schedule":
+        from .scheduler import run_due
+        from .agent import run_task
+        for line in run_due(lambda t: run_task(t, ask_cb=lambda q: True)["summary"][:150]):
+            console.print(line)
+        return
+    if args:
+        from .tui.app import show_header
+        from .agent import run_task
+        show_header()
+        res = run_task(" ".join(args), live_cb=print, ask_cb=lambda q: True)
+        console.print(f"✅ {res['summary']} (via {res['endpoint']})")
     else:
+        from .tui.app import main_loop
         try:
             main_loop()
         except KeyboardInterrupt:

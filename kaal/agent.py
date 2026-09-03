@@ -7,12 +7,19 @@ from .mcp import github as _gh, registry as _mcp
 from .memory import store as _mem
 from .memory import patterns as _pat
 from .agents.orchestrator import decompose
+from . import config_store as _cfg
 
-SENSITIVE = ("delete", "rm ", "format", "password", "token", "key")
+SENSITIVE = {"delete_files": ("delete", "rm ", "format"),
+             "code_execution": ("code", "python", "chala", "exec"),
+             "browser": ("browser", "site", "web", "http", "github", "repo"),
+             "secrets": ("password", "token", "key")}
 
 def needs_permission(task):
     t = task.lower()
-    return any(s in t for s in SENSITIVE)
+    for op, keys in SENSITIVE.items():
+        if any(s in t for s in keys):
+            return op
+    return ""
 
 def plan_task(task):
     """Task ko todos me todo. Agent khud banata hai."""
@@ -26,7 +33,9 @@ def _dispatch(step, live_cb, ask_cb):
     s = step.lower()
     if "delete" in s or s.startswith("rm "):
         if live_cb: live_cb("abhi file delete kar raha hu (permission ke saath)")
-        return _files.delete_path(step.split()[-1], ask_cb)
+        if not _cfg.check_perm("delete_files", ask_cb, f"Delete karu: {step.split()[-1]}?"):
+            return "Delete cancel — permission deny"
+        return _files.delete_path(step.split()[-1], lambda q: True)
     if "read" in s or "padh" in s or "file" in s:
         if live_cb: live_cb("abhi file read kar raha hu")
         parts = step.split()
@@ -34,6 +43,8 @@ def _dispatch(step, live_cb, ask_cb):
         return _files.read_file(p)[:300] if p else _files.list_dir(".")[:300]
     if "code" in s or "python" in s or "chala" in s:
         if live_cb: live_cb("abhi code execute kar raha hu")
+        if not _cfg.check_perm("code_execution", ask_cb, "Code execute karu (sandbox, 30s)?"):
+            return "Code cancel — permission deny"
         return _code.run_python("print('kaal ok')")[:300]
     if "github" in s or "repo" in s:
         if live_cb: live_cb("abhi github check kar raha hu")
@@ -63,7 +74,9 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
             live_cb("purana similar task mila — pattern use kar raha hu")
     except Exception:
         pass
-    if needs_permission(task) and ask_cb and not ask_cb(f"Sensitive lag raha hai: {task[:80]} — aage badhu?"):
+    op = needs_permission(task)
+    if op and not _cfg.check_perm(op if op != "secrets" else "delete_files",
+                                  ask_cb, f"Sensitive lag raha hai ({op}): {task[:70]} — aage badhu?"):
         return {"status": "denied", "summary": "User ne permission deny ki",
                 "todos": todos, "endpoint": ep["name"], "mode": "single"}
     out = []
@@ -99,11 +112,12 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
         _pat.learn(task, base[:300])
     except Exception:
         pass
-    b = budget_status()
+    daily, _per = _cfg.get_budget()
+    b = budget_status(daily)
     summ = (base + llm_note)[:400]
     if hint:
         summ = f"{hint[:150]} | " + summ
     return {"status": "done", "summary": summ,
             "todos": todos, "endpoint": ep["name"],
             "mode": "multi" if use_multi else "single",
-            "budget": f"{b['used']}/5000 ({b['mode']})"}
+            "budget": f"{b['used']}/{daily} ({b['mode']})"}

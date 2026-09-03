@@ -12,12 +12,23 @@ from ..models.ollama import status_line
 from ..memory.store import recent
 from ..agents.specialists import AGENTS
 from ..scheduler import add as sched_add, due as sched_due
+from ..config_store import get_all as cfg_all, set_perm as cfg_set_perm
+from ..storage import startup_check
+from ..platform_adapt import describe as plat_describe
 
 console = Console()
 
 def show_header():
     console.print(Panel.fit("🤖 [bold cyan]KAAL[/] — [dim]samay se aage[/]\n[dim]Termux / Linux / macOS / Windows[/]",
                             border_style="cyan"))
+    try:
+        console.print(f"[dim]{plat_describe()}[/]")
+    except Exception:
+        pass
+    try:
+        console.print(f"[dim]{startup_check()}[/]")
+    except Exception:
+        pass
 
 def show_endpoints():
     t = Table(title="Endpoints (free-tier first)", show_header=True)
@@ -57,7 +68,7 @@ def show_agents():
 
 def main_loop():
     show_header()
-    console.print("[dim]Commands: /endpoints /budget /memory /agents /key /schedule /quit | seedha task likho[/]\n")
+    console.print("[dim]Commands: /endpoints /budget /memory /agents /key /schedule /perm /quit | seedha task likho[/]\n")
     while True:
         try:
             task = Prompt.ask("[bold green]❯[/]").strip()
@@ -101,6 +112,20 @@ def main_loop():
                 console.print(f"[green]{sched_add(parts[2], int(parts[1]))}[/]")
             except ValueError:
                 console.print("[red]Interval number me do: /schedule 86400 task[/]")
+            continue
+        if task.startswith("/perm"):
+            parts = task.split()
+            if len(parts) < 3:
+                perms = cfg_all()["permissions"]
+                t = Table(title="Permissions", show_header=True)
+                t.add_column("Op"); t.add_column("Mode")
+                for k, v in perms.items():
+                    if k != "note":
+                        t.add_row(k, str(v))
+                console.print(t)
+                console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
+                continue
+            console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue
         live_line = {"msg": "soch raha hu..."}
         def live_cb(m): live_line["msg"] = m
