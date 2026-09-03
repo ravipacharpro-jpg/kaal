@@ -1,5 +1,5 @@
 """Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
-from .models.router import select_endpoint, track_usage, budget_status
+from .models.router import select_endpoint, track_usage, budget_status, try_llm
 from .skills import files as _files
 from .skills import code as _code
 from .skills import browser as _browser
@@ -74,13 +74,24 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
         td["result"] = res[:200]
         out.append(f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
     _mcp.unload_idle(0)
+    base = " | ".join(out)[:300]
+    # Real LLM summary sirf tab jab user key hai, warna local summary (no-key safe)
+    llm_note = ""
+    try:
+        name, txt = try_llm(f"Task: {task}\nResults: {base}\n1 line Hindi summary de.")
+        if txt:
+            llm_note = f" | 🧠 {txt[:150]}"
+            ep = {"name": name, **ep} if isinstance(ep, dict) else ep
+            ep["name"] = name
+    except Exception:
+        pass
     try:
         track_usage(ep["name"], 100 * max(1, len(todos)))
-        _mem.save(task, " | ".join(out)[:400])
+        _mem.save(task, base[:400])
     except Exception:
         pass
     b = budget_status()
-    return {"status": "done", "summary": " | ".join(out)[:300],
+    return {"status": "done", "summary": (base + llm_note)[:400],
             "todos": todos, "endpoint": ep["name"],
             "mode": "multi" if use_multi else "single",
             "budget": f"{b['used']}/5000 ({b['mode']})"}

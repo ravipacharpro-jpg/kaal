@@ -137,6 +137,43 @@ def budget_status(daily_budget=5000):
     mode = "auto/fast (budget saver)" if pct >= 80 else "auto/smart"
     return {"used": used, "budget": daily_budget, "pct": pct, "mode": mode}
 
+PROVIDER_URLS = {
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "groq": "https://api.groq.com/openai/v1",
+    "together": "https://api.together.xyz/v1",
+    "mistral": "https://api.mistral.ai/v1",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "xai": "https://api.x.ai/v1",
+}
+DEFAULT_MODELS = {
+    "openai": "gpt-4o-mini", "openrouter": "auto",
+    "groq": "llama-3.1-8b-instant", "together": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "mistral": "mistral-small-latest", "gemini": "gemini-2.0-flash",
+    "xai": "grok-beta", "anthropic": "claude-3-5-haiku-latest",
+}
+
+def try_llm(prompt, max_tokens_note=100):
+    """User vault keys pe real LLM call, fallback chain. Returns (name, text).
+    Key nahi to (rule-based, '') — agent local skills se kaam karta hai."""
+    from .llm import chat
+    vault = _load_json(VAULT, {"providers": {}})
+    for prov, keys in vault.get("providers", {}).items():
+        url = PROVIDER_URLS.get(prov)
+        if not url or not isinstance(keys, list):
+            continue
+        for k in keys:
+            key = k.get("key") if isinstance(k, dict) else k
+            if not key:
+                continue
+            ok, txt = chat(url, key, DEFAULT_MODELS.get(prov, "auto"),
+                           [{"role": "user", "content": prompt[:1500]}])
+            if ok:
+                track_usage(f"{prov}/key", max_tokens_note)
+                return f"{prov}", txt
+    return "rule-based", ""
+
 def add_user_key(provider, key):
     """User ki unlimited API add karo — same provider ki multiple allowed."""
     os.makedirs(CONFIG_DIR, exist_ok=True)

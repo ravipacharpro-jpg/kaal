@@ -7,7 +7,7 @@ from rich.table import Table
 from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, BarColumn, TextColumn
 from ..agent import run_task
-from ..models.router import list_endpoints, budget_status
+from ..models.router import list_endpoints, budget_status, add_user_key
 from ..memory.store import recent
 from ..agents.specialists import AGENTS
 
@@ -54,7 +54,7 @@ def show_agents():
 
 def main_loop():
     show_header()
-    console.print("[dim]Commands: /endpoints /budget /memory /agents /quit | seedha task likho[/]\n")
+    console.print("[dim]Commands: /endpoints /budget /memory /agents /key /quit | seedha task likho[/]\n")
     while True:
         try:
             task = Prompt.ask("[bold green]❯[/]").strip()
@@ -77,6 +77,13 @@ def main_loop():
             continue
         if task == "/agents":
             show_agents()
+            continue
+        if task.startswith("/key"):
+            parts = task.split()
+            if len(parts) < 3:
+                console.print("[dim]Use: /key openai sk-... (provider: openai groq openrouter together mistral gemini xai)[/]")
+                continue
+            console.print(f"[green]{add_user_key(parts[1], parts[2])}[/]")
             continue
         live_line = {"msg": "soch raha hu..."}
         def live_cb(m): live_line["msg"] = m
