@@ -312,6 +312,40 @@ class TestDifferentiators(unittest.TestCase):
         self.assertIn("thread continuity check one", th.lower())
 
 
+class TestSecurity(unittest.TestCase):
+    """prompt.cpp security round: unattended deny + injection marking + undo depth."""
+
+    def test_unattended_deny(self):
+        from kaal.agent import run_task
+        # schedule/serve style: ask hamesha False = sensitive auto-deny
+        r = run_task("delete proof.txt", ask_cb=lambda q: False)
+        self.assertEqual(r["status"], "denied")
+        # explicit allow abhi bhi chalta hai
+        from kaal.config_store import check_perm
+        self.assertTrue(check_perm("delete_files", lambda q: False) is False)
+        self.assertTrue(check_perm("nope_op_xyz", lambda q: True) is True)
+
+    def test_injection_marking(self):
+        from kaal.skills.tools import _t_browser_fetch, UNTRUSTED_OPEN
+        out = _t_browser_fetch({"url": "example.com"})
+        self.assertIn("UNTRUSTED", out)
+        self.assertTrue(out.startswith(UNTRUSTED_OPEN[:20]))
+
+    def test_undo_depth(self):
+        from kaal.skills import files as f
+        import shutil
+        shutil.rmtree("memory/backups", ignore_errors=True)
+        d = os.path.abspath("memory/.test-tmp6")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        p = os.path.join(d, "u.txt")
+        f.write_file(p, "v1")
+        f.edit_file(p, "v1", "v2", lambda q: True)
+        f.edit_file(p, "v2", "v3", lambda q: True)
+        self.assertIn("2 step", f.undo_last(p, 2))
+        self.assertIn("v1", f.read_file(p))
+
+
 class TestGaps(unittest.TestCase):
     def test_real_usage_callback(self):
         import kaal.models.llm as _llm

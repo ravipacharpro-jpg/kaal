@@ -172,8 +172,26 @@ def _run_with_live(task):
             live["msg"] = f"💭 {tail}"
             prog.update(pt, live=live["msg"])
 
+        def ask_colored(q):
+            from rich.text import Text
+            if "\n+" in q or "\n-" in q or q.strip().startswith(("+++", "---", "@@")) or "Diff:" in q:
+                t = Text()
+                for line in q.splitlines():
+                    if line.startswith("+") and not line.startswith("+++"):
+                        t.append(line + "\n", style="green")
+                    elif line.startswith("-") and not line.startswith("---"):
+                        t.append(line + "\n", style="red")
+                    elif line.startswith("@@"):
+                        t.append(line + "\n", style="cyan")
+                    else:
+                        t.append(line + "\n")
+                console.print(Panel(t, title="⚠️ Approval", border_style="yellow",
+                                    padding=(0, 1)))
+                return Confirm.ask("Aage badhu?")
+            return Confirm.ask(f"⚠️  {q}")
+
         res = run_task(task, live_cb=wrap,
-                       ask_cb=lambda q: Confirm.ask(f"⚠️  {q}"),
+                       ask_cb=ask_colored,
                        on_token=stream_wrap,
                        ask_text_cb=lambda q: Prompt.ask(f"[bold yellow]❓ {q}[/]"))
         prog.update(pt, completed=100)

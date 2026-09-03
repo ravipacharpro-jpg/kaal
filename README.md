@@ -43,7 +43,8 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollam
 - **Endpoints:** 20 configured targets; bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
 - **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
 - **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
-- **Skills:** files (backup+undo+checkpoints+fuzzy+syntax-verify), code (AST sandbox/docker), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), plugins
+- **Safety:** unattended (`--serve/--schedule`/Telegram) me sensitive auto-DENY, `[UNTRUSTED]` injection marking + prompt guard, AST sandbox, secret-scan pre-commit
+- **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), vision, plugins
 - **Multi-agent:** 5 personas + LLM role classify (brain mode), desktop pe parallel, Termux pe sequential
 - **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate
 - **Memory:** SQLite + FTS patterns + thread continuity + USER.md/MEMORY.md (editable) + auto-skills + PLAN.md + recipes + session export
@@ -62,5 +63,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.1-dev — Hermes batch in. Tests 43 pass + benchmark 12/12 (hermetic).
+v0.1.1-dev — security batch in. Tests 46 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.
