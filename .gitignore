@@ -5,6 +5,8 @@ __pycache__/
 *.faiss
 logs/
 memory/*.json
+memory/backups/
+memory/.test-tmp*
 config/vault.json
 config/endpoint_usage.json
 config/jobs.json

@@ -12,7 +12,14 @@ from ..memory.store import recent as _recent
 
 
 def _t_file_read(a):
-    return _f.read_file(a.get("path", ""), 3000)[:1500]
+    return _f.read_file(a.get("path", ""), 3000, int(a.get("offset", 0) or 0),
+                        int(a.get("lines", 0) or 0))[:1600]
+
+def _t_file_outline(a):
+    return _f.outline(a.get("path", ""))[:1200]
+
+def _t_file_undo(a):
+    return _f.undo_last(a.get("path", ""))[:200]
 
 def _t_file_list(a):
     return _f.list_dir(a.get("path", "."))[:500]
@@ -68,8 +75,12 @@ def _t_bash_run(a):
     return _sh.run(a.get("cmd", ""), a.get("_ask"))[:800]
 
 TOOLS = [
-    {"name": "file_read", "desc": "File padho", "params": "path",
-     "fn": _t_file_read},
+    {"name": "file_read", "desc": "File padho (badi file: offset/lines do)",
+     "params": "path, offset?, lines?", "fn": _t_file_read},
+    {"name": "file_outline", "desc": "Badi file ka naksha (functions/classes)",
+     "params": "path", "fn": _t_file_outline},
+    {"name": "file_undo", "desc": "Last write/edit/delete wapas lao",
+     "params": "path?", "fn": _t_file_undo},
     {"name": "file_list", "desc": "Folder list karo", "params": "path?",
      "fn": _t_file_list},
     {"name": "file_write", "desc": "Nayi file likho (overwrite)", "params": "path, content",
