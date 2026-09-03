@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+*.db
+*.faiss
+logs/
+memory/*.json
+config/vault.json
+config/endpoint_usage.json
