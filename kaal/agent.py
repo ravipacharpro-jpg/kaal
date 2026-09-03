@@ -1,5 +1,6 @@
 """Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
-from .models.router import select_endpoint, track_usage, budget_status, try_llm
+from .models.router import select_endpoint, track_usage, budget_status, try_llm, has_keys
+from .models import brain as _brain
 from .skills import files as _files
 from .skills import code as _code
 from .skills import browser as _browser
@@ -62,7 +63,29 @@ def _dispatch(step, live_cb, ask_cb):
     return f"✓ {step[:80]}"
 
 def run_task(task, live_cb=None, ask_cb=None, multi=None):
-    """Ek task chalao. multi=True force multi-agent. live_cb = 1-line Hindi update."""
+    """Ek task chalao. Vault key ho to LLM BRAIN, nahi to legacy rule path.
+    live_cb = 1-line Hindi update. Code dump nahi."""
+    # --- BRAIN PATH (Claude-style): model har step decide karta hai ---
+    if has_keys():
+        if live_cb:
+            live_cb("brain active — model soch raha hu")
+        try:
+            todos, summary, ep_name = _brain.run(task, live_cb, ask_cb)
+            if summary:  # brain ne complete kiya
+                _mcp.unload_idle(0)
+                daily, _p = _cfg.get_budget()
+                try:
+                    _mem.save(task, summary[:400])
+                    _pat.learn(task, summary[:300])
+                except Exception:
+                    pass
+                b = budget_status(daily)
+                return {"status": "done", "summary": summary[:400],
+                        "todos": todos or [{"title": task[:50], "status": "done", "agent": "brain"}],
+                        "endpoint": ep_name, "mode": "brain",
+                        "budget": f"{b['used']}/{daily} ({b['mode']})"}
+        except Exception:
+            pass  # gir gaya to legacy path
     ep = select_endpoint()
     jobs = decompose(task)
     use_multi = multi if multi is not None else len(jobs) > 1

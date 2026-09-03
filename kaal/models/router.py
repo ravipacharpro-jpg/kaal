@@ -154,6 +154,32 @@ DEFAULT_MODELS = {
     "xai": "grok-beta", "anthropic": "claude-3-5-haiku-latest",
 }
 
+def try_chat(messages, max_tokens_note=200):
+    """Multi-turn chat vault keys pe. Returns (name, text). Key nahi to (rule-based, '')."""
+    from .llm import chat
+    vault = _load_json(VAULT, {"providers": {}})
+    for prov, keys in vault.get("providers", {}).items():
+        url = PROVIDER_URLS.get(prov)
+        if not url or not isinstance(keys, list):
+            continue
+        for k in keys:
+            key = k.get("key") if isinstance(k, dict) else k
+            if not key:
+                continue
+            ok, txt = chat(url, key, DEFAULT_MODELS.get(prov, "auto"),
+                           messages)
+            if ok:
+                track_usage(f"{prov}/key", max_tokens_note)
+                return f"{prov}", txt
+    return "rule-based", ""
+
+def has_keys():
+    vault = _load_json(VAULT, {"providers": {}})
+    for keys in vault.get("providers", {}).values():
+        if isinstance(keys, list) and any((k.get("key") if isinstance(k, dict) else k) for k in keys):
+            return True
+    return False
+
 def try_llm(prompt, max_tokens_note=100):
     """User vault keys pe real LLM call, fallback chain. Returns (name, text).
     Key nahi to (rule-based, '') — agent local skills se kaam karta hai."""

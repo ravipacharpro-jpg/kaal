@@ -48,3 +48,22 @@ def delete_path(path, ask_cb=None):
     else:
         os.remove(p)
     return f"Delete ho gayi: {p}"
+
+def edit_file(path, old, new, ask_cb=None):
+    """Old text ko new se badlo. Pehle unified diff preview + approval. Summary return."""
+    import difflib
+    p = _safe(path)
+    if not p or not os.path.isfile(p):
+        return "File nahi mili ya path unsafe hai"
+    with open(p, encoding="utf-8", errors="replace") as f:
+        src = f.read()
+    if old not in src:
+        return "Old text file me mila nahi — pehle file_read karo"
+    new_src = src.replace(old, new, 1)
+    diff = "".join(difflib.unified_diff(src.splitlines(True), new_src.splitlines(True),
+                                        "pehle", "ab", n=2))[:1200]
+    if ask_cb and not ask_cb(f"Ye change karu {p} me?\n{diff[:600]}"):
+        return "Edit cancel — permission deny"
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(new_src[:200000])
+    return f"Edit ho gayi: {p}\nDiff:\n{diff[:500]}"
