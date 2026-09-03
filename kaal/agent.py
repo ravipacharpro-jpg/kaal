@@ -62,9 +62,9 @@ def _dispatch(step, live_cb, ask_cb):
     if live_cb: live_cb(f"abhi ye kar raha hu: {step[:50]}")
     return f"✓ {step[:80]}"
 
-def run_task(task, live_cb=None, ask_cb=None, multi=None):
+def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None):
     """Ek task chalao. Vault key ho to LLM BRAIN, nahi to legacy rule path.
-    live_cb = 1-line Hindi update. Code dump nahi."""
+    live_cb = 1-line Hindi update, on_token = streaming chunks. Code dump nahi."""
     # --- BRAIN PATH (Claude-style): model har step decide karta hai ---
     if brain_active():
         if live_cb:
@@ -75,7 +75,8 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
             pass
         try:
             jobs = decompose(task, smart=True)
-            todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs)
+            todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs,
+                                                 on_token=on_token)
             if summary:  # brain ne complete kiya
                 _mcp.unload_idle(0)
                 daily, _p = _cfg.get_budget()
@@ -155,6 +156,16 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
             out.append(f"✓ [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
     _mcp.unload_idle(0)
     base = " | ".join(out)[:300]
+    # Auto-rollback: kuch bhi succeed nahi hua aur files chhui thin to wapas lao
+    done_n = sum(1 for td in todos if td["status"] == "done")
+    rollback_note = ""
+    if done_n == 0 and out:
+        try:
+            rb = _files.rewind()
+            if "files wapas" in rb and not rb.startswith("Rewind: 0"):
+                rollback_note = f" | ↩️ auto-rollback: {rb[:100]}"
+        except Exception:
+            pass
     # Real LLM summary sirf tab jab user key hai, warna local summary (no-key safe)
     llm_note = ""
     try:
@@ -173,7 +184,7 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
         pass
     daily, _per = _cfg.get_budget()
     b = budget_status(daily)
-    summ = (base + llm_note)[:400]
+    summ = (base + llm_note + rollback_note)[:450]
     if hint:
         summ = f"{hint[:150]} | " + summ
     return {"status": "done", "summary": summ,

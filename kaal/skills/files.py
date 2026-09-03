@@ -256,23 +256,61 @@ def delete_path(path, ask_cb=None):
     os.remove(p)
     return f"Delete ho gayi: {p} (undo: file_undo)"
 
-def edit_file(path, old, new, ask_cb=None):
-    """Old text ko new se badlo. Pehle unified diff preview + approval. Summary return."""
+def _fuzzy_span(src, old):
+    """Whitespace-normalized match. Returns (start, end) ya None."""
+    import difflib
+    norm = lambda s: "\n".join(l.rstrip() for l in s.splitlines())
+    nsrc, nold = norm(src), norm(old)
+    i = nsrc.find(nold)
+    if i == -1:
+        return None
+    # normalized offset ko original me map karo (line-based)
+    slines, olines = src.splitlines(True), nold.splitlines()
+    nlines = nsrc.splitlines()
+    start_line = nsrc[:i].count("\n")
+    orig_start = sum(len(l) for l in slines[:start_line])
+    # old ke line-count jitni original lines lo
+    span_lines = slines[start_line:start_line + max(1, len(olines))]
+    sm = difflib.SequenceMatcher(None, "".join(span_lines).rstrip(), nold.rstrip())
+    if sm.ratio() < 0.85:
+        return None
+    return orig_start, orig_start + sum(len(l) for l in span_lines)
+
+def edit_file(path, old, new, ask_cb=None, fuzzy=True, replace_all=False):
+    """Old text ko new se badlo (default pehli occurrence; all=True pe saari).
+    Exact na mile to fuzzy match. Diff preview + approval. Python syntax validate. Verify."""
     import difflib
     p = _safe(path)
     if not p or not os.path.isfile(p):
         return "File nahi mili ya path unsafe hai"
     with open(p, encoding="utf-8", errors="replace") as f:
         src = f.read()
+    note = ""
     if old not in src:
-        return "Old text file me mila nahi — pehle file_read karo"
-    new_src = src.replace(old, new, 1)
+        if not fuzzy:
+            return "Old text file me mila nahi — pehle file_read karo"
+        span = _fuzzy_span(src, old)
+        if not span:
+            return "Old text (fuzzy bhi) nahi mila — file_read/file_outline karo"
+        old = src[span[0]:span[1]]
+        note = "(fuzzy match) "
+    new_src = src.replace(old, new) if replace_all else src.replace(old, new, 1)
+    if p.endswith(".py"):
+        import ast
+        try:
+            ast.parse(new_src)
+        except SyntaxError as e:
+            return f"Syntax toot jayegi — edit roki: {e}"
     diff = "".join(difflib.unified_diff(src.splitlines(True), new_src.splitlines(True),
                                         "pehle", "ab", n=2))[:1200]
-    if ask_cb and not ask_cb(f"Ye change karu {p} me?\n{diff[:600]}"):
+    if ask_cb and not ask_cb(f"Ye change karu {note}{p} me?\n{diff[:600]}"):
         return "Edit cancel — permission deny"
     _backup(p)
     _touch(p)
     with open(p, "w", encoding="utf-8") as f:
         f.write(new_src[:200000])
-    return f"Edit ho gayi: {p} (undo: file_undo)\nDiff:\n{diff[:500]}"
+    with open(p, encoding="utf-8", errors="replace") as f:
+        check = f.read()
+    if new[:200] not in check and new.strip()[:100] not in check:
+        return "Verify fail — change apply nahi hui, undo karo"
+    return f"Edit ho gayi {note}: {p} (undo: file_undo, verified ✅)\nDiff:\n{diff[:500]}"

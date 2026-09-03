@@ -149,6 +149,11 @@ def show_agents():
 
 
 def _run_with_live(task):
+    from ..models.router import estimate
+    try:
+        console.print(f"[dim]💰 Cost estimate: {estimate(task)}[/]")
+    except Exception:
+        pass
     live = {"msg": "soch raha hu..."}
     with Progress(SpinnerColumn(style=th.ACCENT),
                    TextColumn("⚡ {task.fields[live]}"),
@@ -162,8 +167,14 @@ def _run_with_live(task):
             done = min(95, prog.tasks[0].completed + 7)
             prog.update(pt, live=m, completed=done)
 
+        def stream_wrap(piece):
+            tail = piece.replace("\n", " ")[-60:]
+            live["msg"] = f"💭 {tail}"
+            prog.update(pt, live=live["msg"])
+
         res = run_task(task, live_cb=wrap,
-                       ask_cb=lambda q: Confirm.ask(f"⚠️  {q}"))
+                       ask_cb=lambda q: Confirm.ask(f"⚠️  {q}"),
+                       on_token=stream_wrap)
         prog.update(pt, completed=100)
     return res
 
@@ -234,6 +245,26 @@ def main_loop():
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue
+        if task.startswith("/plugin"):
+            from ..skills.pluginman import list_all as _pl_list, enable as _pl_en
+            parts = task.split()
+            items = _pl_list()
+            if len(parts) < 3:
+                if not items:
+                    console.print("[dim]Koi plugin nahi. skills/plugins/<name>.py me TOOLS rakho.[/]")
+                else:
+                    t = Table(show_header=False, border_style="dim", box=None)
+                    t.add_column("Plugin", style="bold")
+                    t.add_column("State", justify="right")
+                    for n, on in items:
+                        t.add_row(n, "[green]ON[/]" if on else "[dim]OFF[/]")
+                    console.print(Panel(t, title="🔌 Plugins", border_style=th.ACCENT))
+                console.print("[dim]Use: /plugin enable name | /plugin disable name[/]")
+                continue
+            if parts[1] in ("enable", "disable") and len(parts) > 2:
+                console.print(f"[green]{_pl_en(parts[2], parts[1] == 'enable')}[/]")
+                console.print("[dim]Restart pe load hoga.[/]")
+                continue
         if task.startswith("/sandbox"):
             from ..skills.sandbox import available as _sb_av
             parts = task.split()

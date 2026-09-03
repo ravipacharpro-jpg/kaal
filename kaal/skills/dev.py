@@ -31,8 +31,12 @@ def repo_map(root=".", max_files=60):
                 return "\n".join(out)[:2000] + "\n... (aur files)"
     return "\n".join(out)[:2000] if out else "Khaali folder"
 
-def test_run(cmd="python3 -m pytest -q", timeout=120):
-    """Tests chalao. Output truncate. Fail to summary + hint."""
+def test_run(cmd="", timeout=120):
+    """Tests chalao. cmd khaali to project-type se auto-detect. Output truncate."""
+    if not cmd:
+        from . import project as _pj
+        d = _pj.detect()
+        cmd = d["test"] or "python3 -m pytest -q"
     parts = cmd.split()[:10]
     if parts[0] not in ("python3", "python", "pytest", "npm", "npx", "go"):
         return "Block: ye command allowed nahi"

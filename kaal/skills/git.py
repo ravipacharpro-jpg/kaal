@@ -39,6 +39,13 @@ def auto_commit(message="", ask_cb=None):
     if ask_cb and not ask_cb(f"Commit karu?\n{message}\n{st[:300]}"):
         return "Commit cancel — permission deny"
     _git(["add", "-A"])
+    from . import secrets as _sec
+    clean, issues = _sec.scan_diff()
+    if not clean:
+        detail = "; ".join(issues[:5])
+        if ask_cb and not ask_cb(f"⚠️ Secret leak mila: {detail} — phir bhi commit?"):
+            _git(["reset"])
+            return f"Commit roka — secret leak: {detail}"
     code3, out3 = _git(["commit", "-m", message[:100]])
     return out3[:300] if code3 == 0 else f"Commit fail: {out3[:200]}"
 

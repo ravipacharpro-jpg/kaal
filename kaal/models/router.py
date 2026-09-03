@@ -192,10 +192,9 @@ def _model_for(prov):
     return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
 
 def try_chat(messages, max_tokens_note=200, model=None):
-    """Pehle keyless Ollama local, phir vault keys. Returns (name, text).
-    Dono nahi to (rule-based, '') — caller legacy rule path pe jayega.
-    NOTE: builtin free-tier list me jinke paas key nahi, wo call nahi hote
-    (sirf display/selection ke liye hain) — key vault me add karo ya Ollama chalao."""
+    """Pehle keyless Ollama local, phir vault keys.
+    Rate-limit wali key 60s cooldown (smart rotation), auth-fail wali skip nahi (user fix karega).
+    Returns (name, text). Dono nahi to (rule-based, '')."""
     from . import ollama as _ol
     try:
         ok, txt = _ol.chat(messages)
@@ -205,6 +204,7 @@ def try_chat(messages, max_tokens_note=200, model=None):
     except Exception:
         pass
     from .llm import chat
+    import time as _t
     vault = _load_json(VAULT, {"providers": {}})
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
@@ -217,12 +217,62 @@ def try_chat(messages, max_tokens_note=200, model=None):
             key = k.get("key") if isinstance(k, dict) else k
             if not key:
                 continue
+            if _cool(str(key)) > _t.time():
+                continue  # rate-limit cooldown me hai — next key
             ok, txt = chat(url, key, m,
                            messages)
             if ok:
                 track_usage(f"{prov}/key", max_tokens_note)
                 return f"{prov}", txt
+            if txt.startswith("rate-limit:"):
+                _cool(str(key), 60)
     return "rule-based", ""
+
+def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
+    """Streaming chat: Ollama local pehle, phir vault keys (SSE).
+    on_token(piece) per chunk. Returns (name, full_text)."""
+    from . import ollama as _ol
+    try:
+        ok, txt = _ol.chat_stream(messages, on_token=on_token)
+        if ok:
+            track_usage("ollama_local", max_tokens_note)
+            return "ollama_local", txt
+    except Exception:
+        pass
+    from .llm import chat_stream
+    import time as _t
+    vault = _load_json(VAULT, {"providers": {}})
+    for prov, keys in vault.get("providers", {}).items():
+        url = PROVIDER_URLS.get(prov)
+        if not url or not isinstance(keys, list):
+            continue
+        m = model if (model and model != "auto" and prov == "openrouter") else _model_for(prov)
+        if model and model != "auto" and prov != "openrouter" and "/" in model:
+            m = model
+        for k in keys:
+            key = k.get("key") if isinstance(k, dict) else k
+            if not key:
+                continue
+            if _cool(str(key)) > _t.time():
+                continue
+            ok, txt = chat_stream(url, key, m, messages, on_token=on_token)
+            if ok:
+                track_usage(f"{prov}/key", max_tokens_note)
+                return f"{prov}", txt
+            if txt.startswith("rate-limit:"):
+                _cool(str(key), 60)
+    return "rule-based", ""
+
+_COOL = {}
+
+def _cool(key, secs=0):
+    """Cooldown registry. _cool(key) -> expiry ts; _cool(key, 60) sets."""
+    import time as _t
+    fp = f"{len(key)}:{key[:6]}:{key[-4:]}"
+    if secs:
+        _COOL[fp] = _t.time() + secs
+        return _COOL[fp]
+    return _COOL.get(fp, 0)
 
 def has_keys():
     vault = _load_json(VAULT, {"providers": {}})
@@ -243,9 +293,10 @@ def brain_active():
         return False
 
 def try_llm(prompt, max_tokens_note=100):
-    """User vault keys pe real LLM call, fallback chain. Returns (name, text).
+    """User vault keys pe real LLM call, rate-limit cooldown rotation.
     Key nahi to (rule-based, '') — agent local skills se kaam karta hai."""
     from .llm import chat
+    import time as _t
     vault = _load_json(VAULT, {"providers": {}})
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
@@ -255,12 +306,30 @@ def try_llm(prompt, max_tokens_note=100):
             key = k.get("key") if isinstance(k, dict) else k
             if not key:
                 continue
+            if _cool(str(key)) > _t.time():
+                continue
             ok, txt = chat(url, key, _model_for(prov),
                            [{"role": "user", "content": prompt[:1500]}])
             if ok:
                 track_usage(f"{prov}/key", max_tokens_note)
                 return f"{prov}", txt
+            if txt.startswith("rate-limit:"):
+                _cool(str(key), 60)
     return "rule-based", ""
+
+def estimate(task, steps=3):
+    """Pre-run cost estimate (~tokens). Rule-of-thumb, guarantee nahi."""
+    toks = int(len(task) * 1.3 + steps * 150 + 300)
+    daily, _ = 5000, 0
+    try:
+        from .. import config_store as _cfg
+        daily, _ = _cfg.get_budget()
+        used = budget_status(daily)["used"]
+    except Exception:
+        used = 0
+    left = max(0, daily - used)
+    flag = " ✅ budget me" if toks <= left else " ⚠️ budget se zyada lag sakta"
+    return f"≈{toks} tokens{flag}"
 
 def add_user_key(provider, key):
     """User ki unlimited API add karo — same provider ki multiple allowed."""

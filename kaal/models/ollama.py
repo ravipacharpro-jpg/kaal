@@ -24,20 +24,40 @@ def status_line():
 
 def chat(messages, timeout=60):
     """Keyless local LLM call. Returns (ok, text). Ollama band to (False, reason)."""
+    ok, text, _ = chat_stream(messages, timeout=timeout)
+    return ok, text
+
+def chat_stream(messages, on_token=None, timeout=120):
+    """Streaming chat. on_token(piece) per chunk. Returns (ok, full_or_err)."""
     ok, models = detect()
     if not ok:
         return False, "ollama-off"
     model = models[0] if models else "llama3.2"
     body = json.dumps({"model": model, "messages": messages,
-                       "stream": False,
+                       "stream": True,
                        "options": {"num_predict": 500}}).encode()
     for base in URLS:
         try:
             req = urllib.request.Request(base + "/api/chat", data=body,
                                          headers={"Content-Type": "application/json"})
+            full = []
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                d = json.load(r)
-            txt = (d.get("message", {}).get("content", "") or "").strip()[:2000]
+                for line in r:
+                    try:
+                        d = json.loads(line)
+                    except Exception:
+                        continue
+                    piece = (d.get("message", {}) or {}).get("content", "")
+                    if piece:
+                        full.append(piece)
+                        if on_token:
+                            try:
+                                on_token(piece)
+                            except Exception:
+                                pass
+                    if d.get("done"):
+                        break
+            txt = "".join(full).strip()[:2000]
             if txt:
                 return True, txt
         except Exception:

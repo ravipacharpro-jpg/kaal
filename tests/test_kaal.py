@@ -82,8 +82,13 @@ class TestBrain(unittest.TestCase):
             ("m", '{"thinking": "list", "tool": {"name": "file_list", "args": {"path": "."}}}'),
             ("m", '{"thinking": "done", "done": "ok mock"}'),
         ]
-        brain.try_chat = lambda msgs, **kw: script.pop(0)
-        todos, summary, ep = brain.run("t", ask_cb=lambda q: True)
+        import kaal.models.router as _rt
+        _orig = _rt.try_chat_stream
+        _rt.try_chat_stream = lambda msgs, **kw: script.pop(0)
+        try:
+            todos, summary, ep = brain.run("t", ask_cb=lambda q: True)
+        finally:
+            _rt.try_chat_stream = _orig
         self.assertEqual(summary, "ok mock")
         self.assertEqual(ep, "m")
 
@@ -177,6 +182,48 @@ class TestHonest(unittest.TestCase):
         # bahar ka path unsafe
         self.assertIsNone(_safe("/etc/passwd"))
         self.assertIsNone(_safe("../../etc/passwd"))
+
+
+class TestRoadmap(unittest.TestCase):
+    def test_secret_scan(self):
+        from kaal.skills.secrets import scan_text
+        self.assertTrue(scan_text('key = "sk-abcdefghij1234567890"'))
+        self.assertEqual(scan_text("hello world"), [])
+
+    def test_rate_cooldown(self):
+        from kaal.models.router import _cool
+        import time
+        _cool("k1234567890abcdef", 60)
+        self.assertGreater(_cool("k1234567890abcdef"), time.time())
+
+    def test_project_detect(self):
+        from kaal.skills.project import detect
+        d = detect(".")
+        self.assertIn("type", d)
+        self.assertIn("test", d)
+
+    def test_fuzzy_syntax_verify(self):
+        from kaal.skills import files as f
+        d = os.path.abspath("memory/.test-tmp4")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
+        p = os.path.join(d, "b.py")
+        f.write_file(p, "x = 1  \ny = 2\n")
+        # trailing-space difference pe fuzzy match
+        r = f.edit_file(p, "x = 1\ny = 2", "x = 10\ny = 2", lambda q: True)
+        self.assertIn("Edit ho gayi", r)
+        # syntax tootegi to block
+        r2 = f.edit_file(p, "x = 10", "x = ", lambda q: True)
+        self.assertIn("Syntax", r2)
+        self.assertIn("x = 10", f.read_file(p))
+
+    def test_estimate(self):
+        from kaal.models.router import estimate
+        self.assertIn("tokens", estimate("hello task"))
+
+    def test_plugins_empty(self):
+        from kaal.skills.pluginman import list_all
+        self.assertEqual(list_all(), [])
 
     def test_builtin_free_need_keys(self):
         from kaal.models.router import BUILTIN_FREE

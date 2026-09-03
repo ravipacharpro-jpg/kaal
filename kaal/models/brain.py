@@ -11,14 +11,23 @@ from .router import try_chat
 
 SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
           "Har jawab SIRF JSON me do, koi extra text nahi:\n"
-          '{"thinking": "1 line me abhi kya kar raha hu", '
+          '{"thinking": "detail me: kya kar raha hu + kyun (2-4 lines ok)", '
           '"tool": {"name": "tool_name", "args": {...}}}  YA  '
           '{"thinking": "...", "done": "final summary max 3 lines"}\n'
           "RULES: code TUI me mat dikhao, sirf summary. "
-          "file_edit/file_delete se pehle soch me approval mango (tool khud puchega). "
-          "Pehle file_read/repo_scan se context lo, phir edit karo. "
-          "SELF-CORRECTION: tool error/fail aaye to galti note karke 2 baar alag approach try karo, "
-          "phir bhi fail to done me rukawat + wajah likho. Max 10 steps me khatm karo.\n")
+          "file_edit/file_delete/pr_open se pehle tool khud approval lega. "
+          "Pehle file_read/repo_scan/file_outline se context lo, phir edit karo. "
+          "Edit ke baad verify message dekho — fail to undo karke dobara. "
+          "SELF-CORRECTION: tool error/fail aaye to wahi approach MAT dohrao — "
+          "galti ka reason likho aur genuinely different approach lo (max 2 retry), "
+          "phir bhi fail to done me rukawat + wajah likho. Max 10 steps me khatm karo.\n"
+          "FEW-SHOT:\n"
+          "TASK: README me version bump karo\n"
+          '{"thinking": "pehle version line dhoondta hu", "tool": {"name": "file_read", "args": {"path": "README.md"}}}\n'
+          "TOOL RESULT: ...version 0.1.0...\n"
+          '{"thinking": "v0.1.0 mili L5 pe, 0.2.0 karta hu", "tool": {"name": "file_edit", "args": {"path": "README.md", "old": "0.1.0", "new": "0.2.0"}}}\n'
+          "TASK: kaunsa project hai ye\n"
+          '{"thinking": "markers check karta hu", "tool": {"name": "repo_scan", "args": {"path": "."}}}\n')
 
 def _context(task):
     parts = []
@@ -50,11 +59,11 @@ def _parse_json(txt):
     except Exception:
         return None
 
-def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None):
+def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None):
     """LLM brain loop. Architect plan + editor execute (Aider style).
     jobs = smart-decomposed todos (LLM roles) display ke liye.
-    Returns (todos, summary, endpoint)."""
-    from .router import get_role_model
+    on_token = streaming chunks (TUI live). Returns (todos, summary, endpoint)."""
+    from .router import get_role_model, try_chat_stream
     editor = get_role_model("editor")
     plan_line = ""
     if jobs:
@@ -66,7 +75,18 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None):
               "agent": j["agent"]} for j in (jobs or [])]
     endpoint = "rule-based"
     for step in range(max_iters):
-        name, txt = try_chat(msgs, model=editor)
+        buf = []
+        def _stream(piece):
+            buf.append(piece)
+            if on_token:
+                try:
+                    on_token(piece)
+                except Exception:
+                    pass
+            elif live_cb and len(buf) % 3 == 0:
+                tail = "".join(buf)[-50:].replace("\n", " ")
+                live_cb(f"💭 model likh raha hai: {tail}")
+        name, txt = try_chat_stream(msgs, model=editor, on_token=_stream)
         if not txt:
             return todos, "", "rule-based"  # key fail — caller legacy pe jayega
         endpoint = name
@@ -75,9 +95,9 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None):
             msgs.append({"role": "assistant", "content": txt})
             msgs.append({"role": "user", "content": "Galat format. SIRF JSON do."})
             continue
-        think = str(d.get("thinking", ""))[:80]
+        think = str(d.get("thinking", ""))[:500]
         if live_cb and think:
-            live_cb(think)
+            live_cb(think[:80])
         if "done" in d:
             for td in todos:
                 td["status"] = "done"

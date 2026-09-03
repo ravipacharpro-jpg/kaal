@@ -29,7 +29,8 @@ def _t_file_write(a):
 
 def _t_file_edit(a):
     return _f.edit_file(a.get("path", ""), a.get("old", ""),
-                        a.get("new", ""), a.get("_ask"))[:600]
+                        a.get("new", ""), a.get("_ask"),
+                        replace_all=bool(a.get("all", False)))[:700]
 
 def _t_file_delete(a):
     return _f.delete_path(a.get("path", ""), a.get("_ask"))[:200]
@@ -101,8 +102,8 @@ TOOLS = [
      "fn": _t_file_list},
     {"name": "file_write", "desc": "Nayi file likho (overwrite)", "params": "path, content",
      "fn": _t_file_write},
-    {"name": "file_edit", "desc": "File me old text ko new se badlo (diff preview + approval)",
-     "params": "path, old, new", "fn": _t_file_edit, "needs_approval": True},
+    {"name": "file_edit", "desc": "File me old text ko new se badlo (diff preview + approval, fuzzy+verify)",
+     "params": "path, old, new, all?", "fn": _t_file_edit, "needs_approval": True},
     {"name": "file_delete", "desc": "File/folder delete (approval must)",
      "params": "path", "fn": _t_file_delete, "needs_approval": True},
     {"name": "code_run", "desc": "Python sandbox me chalao (30s)", "params": "code",
@@ -141,8 +142,18 @@ TOOLS = [
 
 BY_NAME = {t["name"]: t for t in TOOLS}
 
+def _load_plugins():
+    try:
+        from . import pluginman as _pl
+        for t in _pl.load_enabled():
+            BY_NAME.setdefault(t["name"], t)
+    except Exception:
+        pass
+
+_load_plugins()
+
 def spec_text():
     lines = ["TOOLS (JSON call karo):"]
-    for t in TOOLS:
-        lines.append(f'- {t["name"]}({t["params"]}): {t["desc"]}')
+    for t in BY_NAME.values():
+        lines.append(f'- {t["name"]}({t.get("params", "-")}): {t.get("desc", "")}')
     return "\n".join(lines)
