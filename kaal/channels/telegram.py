@@ -1,9 +1,11 @@
-"""Telegram bridge — phone se task, Termux/server pe execute, result wapas.
-Setup: @BotFather se token, config/telegram.json me {"bot_token": "...", "allowed_ids": [123]}.
-Run: kaal --telegram  (polling loop, Ctrl+C stop)
-Security: allowed_ids ke bahar koi reply nahi. Sensitive ops auto-deny (phone pe approval nahi).
+"""Telegram channel — gateway interface impl.
+NAME/handle_text/serve. Setup: config/telegram.json.
+Run: kaal --telegram
+Security: allowed_ids ke bahar koi reply nahi. Sensitive ops auto-deny.
 """
 import json, time, urllib.parse, urllib.request
+
+NAME = "telegram"
 
 CFG = {"bot_token": "", "allowed_ids": []}
 API = "https://api.telegram.org/bot"
@@ -40,7 +42,7 @@ def handle_text(text, run_fn):
                 "/status — budget+endpoints\n/tasks seedha bhi likh sakte ho")
     if t.startswith("/status"):
         try:
-            from .models.router import budget_status
+            from ..models.router import budget_status
             b = budget_status()
             return f"💰 {b['used']}/{b['budget']} | ⚡ {b['mode']}"
         except Exception as e:
@@ -62,7 +64,7 @@ def serve(poll_secs=3):
         return f"Token nahi — {path} me bot_token dalo (BotFather se)."
     allowed = set(CFG["allowed_ids"])
     print(f"🤖 Kaal Telegram live (allowed: {len(allowed)} users). Ctrl+C stop.")
-    from .agent import run_task
+    from ..agent import run_task
     offset = 0
     try:
         while True:

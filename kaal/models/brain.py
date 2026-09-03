@@ -8,6 +8,7 @@ from ..skills import rules as _rules
 from ..agents.orchestrator import PERSONAS
 from ..memory.store import recent as _recent
 from ..memory.patterns import thread_context as _thread_ctx
+from ..memory.persona import read_all as _persona_read
 from .router import try_chat
 
 SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
@@ -36,6 +37,12 @@ SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
 
 def _context(task):
     parts = []
+    try:
+        who = _persona_read()
+        if who:
+            parts.append("USER + MEMORY (USER.md/MEMORY.md se):\n" + who)
+    except Exception:
+        pass
     try:
         pa = "\n".join(f"- {k}: {v}" for k, v in PERSONAS.items())
         parts.append("SPECIALIST PERSONAS (tool results ko inki nazar se dekho):\n" + pa)

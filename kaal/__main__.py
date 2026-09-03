@@ -27,7 +27,7 @@ def main():
         console.print(f"✅ {res['summary']} (via {res['endpoint']})")
         return
     if args and args[0] == "--telegram":
-        from .bridge_telegram import serve
+        from .channels.telegram import serve
         console.print(serve())
         return
     if args and args[0] == "--schedule":

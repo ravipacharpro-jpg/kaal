@@ -202,6 +202,21 @@ def main_loop():
         if task == "/memory":
             show_memory()
             continue
+        if task.startswith("/user"):
+            from ..memory.persona import read_all as _who, ensure as _who_ensure
+            import os as _os
+            parts = task.split(" ", 2)
+            if len(parts) >= 3 and parts[1] == "add":
+                _who_ensure()
+                p = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "memory", "USER.md"))
+                with open(p, "a", encoding="utf-8") as _f:
+                    _f.write(f"\n- {parts[2][:200]}\n")
+                console.print("[green]USER.md me likh diya.[/]")
+                continue
+            console.print(Panel(_who() or "[dim]Khaali.[/]", title="👤 USER + MEMORY",
+                                border_style=th.ACCENT, padding=(0, 1)))
+            console.print("[dim]Use: /user add <baat> — ya memory/USER.md seedha edit karo[/]")
+            continue
         if task == "/agents":
             show_agents()
             continue

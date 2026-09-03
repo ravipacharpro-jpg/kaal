@@ -100,6 +100,13 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
                 review_note = _self_review(task, summary)
                 if review_note:
                     summary = (summary + review_note)[:450]
+                try:
+                    from . import autoskill as _ask2
+                    skill = _ask2.maybe_distill(task, todos, ep_name)
+                    if skill and live_cb:
+                        live_cb(f"✨ naya skill bana: {skill}")
+                except Exception:
+                    pass
                 _mcp.unload_idle(0)
                 daily, _p = _cfg.get_budget()
                 try:

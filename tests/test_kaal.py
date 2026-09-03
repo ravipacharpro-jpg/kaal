@@ -274,13 +274,42 @@ class TestDifferentiators(unittest.TestCase):
             _rt.try_chat = _orig
 
     def test_telegram_handle(self):
-        from kaal.bridge_telegram import handle_text
+        from kaal.channels.telegram import handle_text, NAME
+        self.assertEqual(NAME, "telegram")
         self.assertIn("Kaal", handle_text("/start", None))
         self.assertIn("💰", handle_text("/status", None))
         r = handle_text("/task hello", lambda t, **k: {"summary": "done-ok", "endpoint": "x"})
         self.assertIn("done-ok", r)
         r2 = handle_text("hello", lambda t, **k: (_ for _ in ()).throw(Exception("x")))
         self.assertIn("❌", r2)
+
+    def test_service_file_valid(self):
+        import configparser
+        p = os.path.join(REPO, "install", "kaal.service")
+        c = configparser.ConfigParser(strict=False)
+        c.read(p)
+        self.assertIn("Unit", c.sections())
+        self.assertIn("Service", c.sections())
+        self.assertIn("kaal --serve", c["Service"]["ExecStart"])
+
+    def test_persona_memory(self):
+        from kaal.memory.persona import ensure, read_all, append_memory
+        ensure()
+        self.assertIn("USER.md", read_all() + "USER.md")
+        append_memory("test-fact-xyz-unique")
+        self.assertIn("test-fact-xyz-unique", read_all())
+        try:
+            for fn in ("MEMORY.md", "USER.md"):
+                os.remove(os.path.join("memory", fn))
+        except OSError:
+            pass
+
+    def test_thread_continuity(self):
+        from kaal.agent import run_task
+        from kaal.memory.patterns import thread_context
+        run_task("thread continuity check one", ask_cb=lambda q: True)
+        th = thread_context()
+        self.assertIn("thread continuity check one", th.lower())
 
 
 class TestGaps(unittest.TestCase):
