@@ -70,6 +70,10 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
         if live_cb:
             live_cb("brain active — model soch raha hu")
         try:
+            _files.checkpoint("brain-start")
+        except Exception:
+            pass
+        try:
             todos, summary, ep_name = _brain.run(task, live_cb, ask_cb)
             if summary:  # brain ne complete kiya
                 _mcp.unload_idle(0)
@@ -102,6 +106,10 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None):
                                   ask_cb, f"Sensitive lag raha hai ({op}): {task[:70]} — aage badhu?"):
         return {"status": "denied", "summary": "User ne permission deny ki",
                 "todos": todos, "endpoint": ep["name"], "mode": "single"}
+    try:
+        _files.checkpoint("task-start")
+    except Exception:
+        pass
     out = []
     for i, td in enumerate(todos):
         td["status"] = "doing"

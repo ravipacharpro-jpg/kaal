@@ -57,6 +57,93 @@ def outline(path):
 def _index_path():
     return os.path.join(BACKUP_DIR, "index.json")
 
+def _cp_dir():
+    d = os.path.join(BACKUP_DIR, "checkpoints")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def _touch(p):
+    """Path ko tracked list me dalo (checkpoint iska fresh backup lega)."""
+    import json
+    try:
+        with open(_index_path(), encoding="utf-8") as f:
+            idx = json.load(f)
+    except Exception:
+        idx = {}
+    if p not in idx:
+        idx[p] = idx.get(p, "")
+        try:
+            with open(_index_path(), "w", encoding="utf-8") as f:
+                json.dump(idx, f)
+        except OSError:
+            pass
+
+def checkpoint(tag="auto"):
+    """Claude-style checkpoint: tracked files ka FRESH backup + snapshot. Returns id."""
+    import json
+    try:
+        with open(_index_path(), encoding="utf-8") as f:
+            idx = json.load(f)
+    except Exception:
+        idx = {}
+    for p in list(idx):
+        if os.path.isfile(p):
+            nb = _backup(p)  # current content ka fresh backup
+            if nb:
+                idx[p] = nb
+    try:
+        with open(_index_path(), "w", encoding="utf-8") as f:
+            json.dump(idx, f)
+    except Exception:
+        pass
+    cid = f"{int(time.time())}-{tag}"
+    with open(os.path.join(_cp_dir(), cid + ".json"), "w", encoding="utf-8") as f:
+        json.dump(idx, f)
+    cps = sorted(os.listdir(_cp_dir()))
+    for old in cps[:-10]:
+        try: os.remove(os.path.join(_cp_dir(), old))
+        except OSError: pass
+    return f"Checkpoint: {cid} ({len(idx)} files tracked)"
+
+def _restore_idx(idx):
+    ok, fail = 0, 0
+    for p, bp in idx.items():
+        try:
+            with open(bp, "rb") as f:
+                data = f.read(2000000)
+            with open(p, "wb") as f:
+                f.write(data)
+            ok += 1
+        except OSError:
+            fail += 1
+    return ok, fail
+
+def rewind():
+    """Last checkpoint pe wapas. Pehle current state auto-save (redo = dobara rewind)."""
+    import json
+    try:
+        cps = sorted(os.listdir(_cp_dir()))
+    except OSError:
+        return "Koi checkpoint nahi"
+    if not cps:
+        return "Koi checkpoint nahi"
+    try:
+        with open(_index_path(), encoding="utf-8") as f:
+            cur = json.load(f)
+    except Exception:
+        cur = {}
+    with open(os.path.join(_cp_dir(), f"{int(time.time())}-pre-rewind.json"), "w", encoding="utf-8") as f:
+        json.dump(cur, f)
+    with open(os.path.join(_cp_dir(), cps[-1]), encoding="utf-8") as f:
+        idx = json.load(f)
+    ok, fail = _restore_idx(idx)
+    try:
+        with open(_index_path(), "w", encoding="utf-8") as f:
+            json.dump(idx, f)
+    except OSError:
+        pass
+    return f"Rewind: {ok} files wapas, {fail} fail (redo ke liye dobara /rewind)"
+
 def _backup(p):
     """Original ka timestamped backup + index. Returns backup path ya ''."""
     import json
@@ -115,6 +202,7 @@ def write_file(path, content, ask_cb=None):
         return "Unsafe path — write block"
     os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
     _backup(p)
+    _touch(p)
     with open(p, "w", encoding="utf-8") as f:
         f.write(content[:100000])
     return f"Write ho gayi: {p} (undo: file_undo)"
@@ -156,6 +244,7 @@ def edit_file(path, old, new, ask_cb=None):
     if ask_cb and not ask_cb(f"Ye change karu {p} me?\n{diff[:600]}"):
         return "Edit cancel — permission deny"
     _backup(p)
+    _touch(p)
     with open(p, "w", encoding="utf-8") as f:
         f.write(new_src[:200000])
     return f"Edit ho gayi: {p} (undo: file_undo)\nDiff:\n{diff[:500]}"

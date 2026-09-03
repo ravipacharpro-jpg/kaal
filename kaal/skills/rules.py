@@ -26,20 +26,37 @@ def ensure():
             with open(p, "w", encoding="utf-8") as f:
                 f.write(f"keywords: {keys}\n\n{body}\n")
 
-def match(task):
-    """Task se relevant skill bodies do (max 2)."""
+def _dirs():
+    """builtin + repo-local + global (OpenHands microagents style)."""
+    ds = [DIR]
+    ds.append(os.path.abspath(".kaal/skills"))
+    ds.append(os.path.join(os.path.expanduser("~"), ".kaal", "skills"))
+    return [d for d in ds if os.path.isdir(d)]
+
+def match(task, limit=3):
+    """Task se relevant skill bodies do. Repo-local skills ko priority."""
     ensure()
     t = task.lower()
     out = []
-    for fn in sorted(os.listdir(DIR)):
-        if not fn.endswith(".md"):
+    for d in reversed(_dirs()):  # builtin pehle scan, local baad me (priority end me)
+        try:
+            files = sorted(os.listdir(d))
+        except OSError:
             continue
-        with open(os.path.join(DIR, fn), encoding="utf-8", errors="replace") as f:
-            txt = f.read()
-        m = re.search(r"keywords:\s*(.+)", txt)
-        keys = [k.strip() for k in (m.group(1) if m else "").split(",")]
-        if any(k and k in t for k in keys):
-            out.append(f"## Skill: {fn}\n" + txt[:800])
-        if len(out) >= 2:
+        for fn in files:
+            if not fn.endswith(".md"):
+                continue
+            with open(os.path.join(d, fn), encoding="utf-8", errors="replace") as f:
+                txt = f.read()
+            m = re.search(r"keywords:\s*(.+)", txt)
+            keys = [k.strip() for k in (m.group(1) if m else "").split(",")]
+            tag = "local" if d != DIR else "builtin"
+            if not keys:  # keywords nahi to hamesha load (repo instructions)
+                out.append(f"## Skill [{tag}]: {fn}\n" + txt[:800])
+            elif any(k and k in t for k in keys):
+                out.append(f"## Skill [{tag}]: {fn}\n" + txt[:800])
+            if len(out) >= limit:
+                break
+        if len(out) >= limit:
             break
     return "\n\n".join(out)

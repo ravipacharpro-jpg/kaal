@@ -84,5 +84,53 @@ class TestOrchestrator(unittest.TestCase):
         self.assertIn("github_specialist", agents)
 
 
+class TestPower(unittest.TestCase):
+    def test_checkpoint_rewind(self):
+        from kaal.skills import files as f
+        d = os.path.abspath("memory/.test-tmp3")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
+        p = os.path.join(d, "c.txt")
+        f.write_file(p, "v1")
+        f.checkpoint("t")
+        f.edit_file(p, "v1", "v2", lambda q: True)
+        self.assertIn("v2", f.read_file(p))
+        self.assertIn("Rewind", f.rewind())
+        self.assertIn("v1", f.read_file(p))
+
+    def test_plan_and_recipes(self):
+        from kaal.planner import draft, write, read
+        steps = draft("code fix karo aur test chalao")
+        self.assertGreaterEqual(len(steps), 1)
+        write("t", steps)
+        self.assertIn("Plan", read())
+        try:
+            os.remove("PLAN.md")
+        except OSError:
+            pass
+        from kaal.recipes import list_all, get
+        self.assertIn("morning-review", list_all())
+        self.assertGreaterEqual(len(get("morning-review")), 1)
+
+    def test_local_skills(self):
+        from kaal.skills import rules
+        os.makedirs(".kaal/skills", exist_ok=True)
+        with open(".kaal/skills/t.md", "w") as fh:
+            fh.write("keywords: zaptest\n\nZap rule")
+        self.addCleanup(lambda: __import__("shutil").rmtree(".kaal", ignore_errors=True))
+        self.assertIn("Zap rule", rules.match("please zaptest now"))
+
+    def test_changelog(self):
+        from kaal.skills.git import changelog
+        self.assertIn("Features", changelog(5))
+
+    def test_export(self):
+        from kaal.memory.store import save, export_md
+        save("export test", "export summary")
+        p = os.path.abspath("memory/.test-export.md")
+        self.addCleanup(lambda: os.path.exists(p) and os.remove(p))
+        self.assertIn("Export ho gaya", export_md(p))
+
+
 if __name__ == "__main__":
     unittest.main()

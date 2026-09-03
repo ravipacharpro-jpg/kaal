@@ -77,6 +77,19 @@ def _t_bash_run(a):
 def _t_git_changelog(a):
     return _g.changelog(int(a.get("limit", 15) or 15), a.get("since", ""))[:1500]
 
+def _t_checkpoint(a):
+    return _f.checkpoint(a.get("tag", "manual"))[:200]
+
+def _t_rewind(a):
+    ask = a.get("_ask")
+    if ask and not ask("Last checkpoint pe rewind karu? Current auto-save hogi."):
+        return "Rewind cancel"
+    return _f.rewind()[:300]
+
+def _t_export(a):
+    from ..memory.store import export_md
+    return export_md(a.get("path", ""))[:200]
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho (badi file: offset/lines do)",
      "params": "path, offset?, lines?", "fn": _t_file_read},
@@ -118,6 +131,12 @@ TOOLS = [
      "params": "cmd", "fn": _t_bash_run, "needs_approval": True},
     {"name": "git_changelog", "desc": "Git history se grouped changelog",
      "params": "limit?, since?", "fn": _t_git_changelog},
+    {"name": "checkpoint", "desc": "Checkpoint lo (rewind point)",
+     "params": "tag?", "fn": _t_checkpoint},
+    {"name": "rewind", "desc": "Last checkpoint pe wapas (approval)",
+     "params": "-", "fn": _t_rewind, "needs_approval": True},
+    {"name": "export_session", "desc": "Sessions ka markdown export",
+     "params": "path?", "fn": _t_export},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}

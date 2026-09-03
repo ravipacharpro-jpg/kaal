@@ -234,6 +234,71 @@ def main_loop():
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue
+        if task == "/checkpoint":
+            from ..skills.files import checkpoint as _cp
+            console.print(f"[green]{_cp('manual')}[/]")
+            continue
+        if task == "/rewind":
+            from ..skills.files import rewind as _rw
+            if Confirm.ask("Last checkpoint pe rewind karu?"):
+                console.print(f"[yellow]{_rw()}[/]")
+            else:
+                console.print("[dim]Rewind cancel.[/]")
+            continue
+        if task.startswith("/export"):
+            from ..memory.store import export_md
+            parts = task.split(" ", 1)
+            console.print(f"[green]{export_md(parts[1].strip() if len(parts) > 1 else '')}[/]")
+            continue
+        if task.startswith("/plan"):
+            from ..planner import draft, write, read as plan_read
+            what = task[5:].strip()
+            if not what:
+                cur = plan_read()
+                console.print(Panel(cur or "[dim]Koi plan nahi. Use: /plan task yahan[/]",
+                                    title="📋 PLAN.md", border_style=th.ACCENT))
+                continue
+            steps = draft(what)
+            write(what, steps)
+            t = Table(show_header=False, border_style="dim", box=None)
+            t.add_column("#", style="dim"); t.add_column("Step", style="bold")
+            for i, s in enumerate(steps, 1):
+                t.add_row(str(i), s[:70])
+            console.print(Panel(t, title=f"📋 Plan: {what[:50]}", border_style=th.ACCENT))
+            if Confirm.ask("Plan approve? (yes = execute)"):
+                from ..agent import run_task as _rt
+                res = _run_with_live(what)
+                show_result(res)
+            else:
+                console.print("[dim]Plan PLAN.md me saved — /approve se chalao.[/]")
+            continue
+        if task == "/approve":
+            from ..planner import read as plan_read
+            cur = plan_read()
+            if not cur:
+                console.print("[dim]Koi plan nahi.[/]")
+                continue
+            first = cur.splitlines()[0].replace("# Plan:", "").strip()
+            res = _run_with_live(first or "plan execute karo")
+            show_result(res)
+            continue
+        if task.startswith("/recipe"):
+            from ..recipes import list_all, get as recipe_get
+            parts = task.split(" ", 1)
+            if len(parts) < 2:
+                console.print(Panel("🍳 " + " | ".join(list_all() or ["koi nahi"]),
+                                    title="Recipes", border_style=th.ACCENT))
+                console.print("[dim]Use: /recipe morning-review[/]")
+                continue
+            steps = recipe_get(parts[1].strip())
+            if not steps:
+                console.print("[red]Recipe mili nahi.[/]")
+                continue
+            for s in steps:
+                console.print(f"[dim]🍳 {s[:70]}[/]")
+                res = _run_with_live(s)
+                show_result(res)
+            continue
         if task.startswith("/ollama"):
             parts = task.split(" ", 1)
             ok, models = ollama_detect()
