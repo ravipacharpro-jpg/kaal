@@ -22,13 +22,14 @@ def status_line():
     ms = ", ".join(models) if models else "koi model load nahi"
     return f"Ollama: chal raha ✅ models: {ms}"
 
-def chat(messages, timeout=60):
+def chat(messages, timeout=60, usage_cb=None):
     """Keyless local LLM call. Returns (ok, text). Ollama band to (False, reason)."""
-    ok, text, _ = chat_stream(messages, timeout=timeout)
+    ok, text = chat_stream(messages, timeout=timeout, usage_cb=usage_cb)
     return ok, text
 
-def chat_stream(messages, on_token=None, timeout=120):
-    """Streaming chat. on_token(piece) per chunk. Returns (ok, full_or_err)."""
+def chat_stream(messages, on_token=None, timeout=120, usage_cb=None):
+    """Streaming chat. on_token(piece) per chunk. Real eval counts usage_cb ko.
+    Returns (ok, full_or_err)."""
     ok, models = detect()
     if not ok:
         return False, "ollama-off"
@@ -56,6 +57,12 @@ def chat_stream(messages, on_token=None, timeout=120):
                             except Exception:
                                 pass
                     if d.get("done"):
+                        try:
+                            n = int(d.get("prompt_eval_count", 0)) + int(d.get("eval_count", 0))
+                            if n and usage_cb:
+                                usage_cb(n)
+                        except Exception:
+                            pass
                         break
             txt = "".join(full).strip()[:2000]
             if txt:

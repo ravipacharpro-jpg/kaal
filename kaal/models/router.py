@@ -196,10 +196,11 @@ def try_chat(messages, max_tokens_note=200, model=None):
     Rate-limit wali key 60s cooldown (smart rotation), auth-fail wali skip nahi (user fix karega).
     Returns (name, text). Dono nahi to (rule-based, '')."""
     from . import ollama as _ol
+    got0 = []
     try:
-        ok, txt = _ol.chat(messages)
+        ok, txt = _ol.chat(messages, usage_cb=lambda n: got0.append(n))
         if ok:
-            track_usage("ollama_local", max_tokens_note)
+            track_usage("ollama_local", got0[0] if got0 else max_tokens_note)
             return "ollama_local", txt
     except Exception:
         pass
@@ -219,10 +220,10 @@ def try_chat(messages, max_tokens_note=200, model=None):
                 continue
             if _cool(str(key)) > _t.time():
                 continue  # rate-limit cooldown me hai — next key
-            ok, txt = chat(url, key, m,
-                           messages)
+            got1 = []
+            ok, txt = chat(url, key, m, messages, usage_cb=lambda n: got1.append(n))
             if ok:
-                track_usage(f"{prov}/key", max_tokens_note)
+                track_usage(f"{prov}/key", got1[0] if got1 else max_tokens_note)
                 return f"{prov}", txt
             if txt.startswith("rate-limit:"):
                 _cool(str(key), 60)
@@ -232,10 +233,12 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
     """Streaming chat: Ollama local pehle, phir vault keys (SSE).
     on_token(piece) per chunk. Returns (name, full_text)."""
     from . import ollama as _ol
+    got = []
     try:
-        ok, txt = _ol.chat_stream(messages, on_token=on_token)
+        ok, txt = _ol.chat_stream(messages, on_token=on_token,
+                                   usage_cb=lambda n: got.append(n))
         if ok:
-            track_usage("ollama_local", max_tokens_note)
+            track_usage("ollama_local", got[0] if got else max_tokens_note)
             return "ollama_local", txt
     except Exception:
         pass
@@ -255,9 +258,11 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
                 continue
             if _cool(str(key)) > _t.time():
                 continue
-            ok, txt = chat_stream(url, key, m, messages, on_token=on_token)
+            got2 = []
+            ok, txt = chat_stream(url, key, m, messages, on_token=on_token,
+                                  usage_cb=lambda n: got2.append(n))
             if ok:
-                track_usage(f"{prov}/key", max_tokens_note)
+                track_usage(f"{prov}/key", got2[0] if got2 else max_tokens_note)
                 return f"{prov}", txt
             if txt.startswith("rate-limit:"):
                 _cool(str(key), 60)
@@ -308,10 +313,35 @@ def try_llm(prompt, max_tokens_note=100):
                 continue
             if _cool(str(key)) > _t.time():
                 continue
+            got3 = []
             ok, txt = chat(url, key, _model_for(prov),
-                           [{"role": "user", "content": prompt[:1500]}])
+                           [{"role": "user", "content": prompt[:1500]}],
+                           usage_cb=lambda n: got3.append(n))
             if ok:
-                track_usage(f"{prov}/key", max_tokens_note)
+                track_usage(f"{prov}/key", got3[0] if got3 else max_tokens_note)
+                return f"{prov}", txt
+            if txt.startswith("rate-limit:"):
+                _cool(str(key), 60)
+    return "rule-based", ""
+
+def try_vision(prompt, b64, mime="image/png"):
+    """Image describe via vault keys (vision models). Returns (name, text)."""
+    from .llm import chat_vision
+    import time as _t
+    vault = _load_json(VAULT, {"providers": {}})
+    for prov, keys in vault.get("providers", {}).items():
+        url = PROVIDER_URLS.get(prov)
+        if not url or not isinstance(keys, list):
+            continue
+        for k in keys:
+            key = k.get("key") if isinstance(k, dict) else k
+            if not key or _cool(str(key)) > _t.time():
+                continue
+            got = []
+            ok, txt = chat_vision(url, key, _model_for(prov), prompt, b64, mime,
+                                  usage_cb=lambda n: got.append(n))
+            if ok:
+                track_usage(f"{prov}/key", got[0] if got else 300)
                 return f"{prov}", txt
             if txt.startswith("rate-limit:"):
                 _cool(str(key), 60)

@@ -14,6 +14,8 @@ RES = os.path.join(REPO, "benchmarks", "results.json")
 def fresh():
     shutil.rmtree(WORK, ignore_errors=True)
     os.makedirs(WORK, exist_ok=True)
+    # test-state isolation: backups/checkpoints pichle run se leak na ho
+    shutil.rmtree(os.path.join(REPO, "memory", "backups"), ignore_errors=True)
 
 
 TASKS = []

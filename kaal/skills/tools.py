@@ -100,6 +100,10 @@ def _t_code_search(a):
     rows = _ss.search(a.get("query", ""), int(a.get("limit", 5) or 5))
     return (f"(indexed {n} chunks)\n" + "\n".join(rows))[:1500] if rows else "Kuch nahi mila"
 
+def _t_vision(a):
+    from . import vision as _v
+    return _v.describe(a.get("path", ""), a.get("prompt", "Is image me kya hai? UI bug ho to batao."), a.get("_ask"))[:900]
+
 TOOLS = [
     {"name": "file_read", "desc": "File padho (badi file: offset/lines do)",
      "params": "path, offset?, lines?", "fn": _t_file_read},
@@ -149,6 +153,8 @@ TOOLS = [
      "params": "path?", "fn": _t_export},
     {"name": "code_search", "desc": "Codebase me relevant snippets dhoondo (BM25)",
      "params": "query, path?, limit?", "fn": _t_code_search},
+    {"name": "image_describe", "desc": "Screenshot/UI image model ko dikhao (vision key chahiye)",
+     "params": "path, prompt?", "fn": _t_vision},
 ]
 
 BY_NAME = {t["name"]: t for t in TOOLS}

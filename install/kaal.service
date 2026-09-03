@@ -1,0 +1,15 @@
+[Unit]
+Description=Kaal autonomous agent scheduler
+After=network-online.target
+
+[Service]
+Type=simple
+# REPO ko actual path se badlo:
+WorkingDirectory=/home/USER/kaal
+ExecStart=/usr/bin/python3 -m kaal --serve 300
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target
+# enable: cp install/kaal.service ~/.config/systemd/user/ && systemctl --user enable --now kaal

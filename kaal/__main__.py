@@ -32,6 +32,20 @@ def main():
         for line in run_due(lambda t: run_task(t, ask_cb=lambda q: True)["summary"][:150]):
             console.print(line)
         return
+    if args and args[0] == "--serve":
+        import time
+        from .scheduler import run_due
+        from .agent import run_task
+        secs = int(args[1]) if len(args) > 1 and args[1].isdigit() else 300
+        console.print(f"🤖 Kaal serve mode — har {secs}s due jobs (Ctrl+C stop). Termux pe Termux:API/cron behtar.")
+        try:
+            while True:
+                for line in run_due(lambda t: run_task(t, ask_cb=lambda q: True)["summary"][:150]):
+                    console.print(line)
+                time.sleep(secs)
+        except KeyboardInterrupt:
+            console.print("Serve band.")
+        return
     if args:
         from .tui.app import show_header
         from .agent import run_task

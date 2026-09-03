@@ -103,13 +103,30 @@ class TestOrchestrator(unittest.TestCase):
 
 
 class TestPower(unittest.TestCase):
+    def test_checkpoint_ordering_rapid(self):
+        """Same-second checkpoints: rewind hamesha newest uthaye (mtime order)."""
+        from kaal.skills import files as f
+        import shutil
+        shutil.rmtree("memory/backups", ignore_errors=True)
+        d = os.path.abspath("memory/.test-tmp5")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        p = os.path.join(d, "o.txt")
+        f.write_file(p, "v1")
+        f.checkpoint("a")
+        f.edit_file(p, "v1", "v2", lambda q: True)
+        f.checkpoint("b")  # same second possible
+        f.edit_file(p, "v2", "v3", lambda q: True)
+        f.rewind()
+        self.assertIn("v2", f.read_file(p))
+
     def test_checkpoint_rewind(self):
         from kaal.skills import files as f
         import shutil
-        shutil.rmtree("memory/backups", ignore_errors=True)  # stale state hatao
+        shutil.rmtree("memory/backups", ignore_errors=True)
         d = os.path.abspath("memory/.test-tmp3")
         os.makedirs(d, exist_ok=True)
-        self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
         p = os.path.join(d, "c.txt")
         f.write_file(p, "v1")
         f.checkpoint("t")
@@ -224,6 +241,47 @@ class TestRoadmap(unittest.TestCase):
     def test_plugins_empty(self):
         from kaal.skills.pluginman import list_all
         self.assertEqual(list_all(), [])
+
+
+class TestGaps(unittest.TestCase):
+    def test_real_usage_callback(self):
+        import kaal.models.llm as _llm
+        got = []
+        class FakeResp:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self):
+                import json
+                return json.dumps({"choices": [{"message": {"content": "hi"}}],
+                                   "usage": {"total_tokens": 42}}).encode()
+        import urllib.request as _ur
+        _orig = _ur.urlopen
+        _ur.urlopen = lambda *a, **k: FakeResp()
+        try:
+            ok, txt = _llm.chat("https://x", "k", "m", [{"role": "user", "content": "hi"}],
+                                usage_cb=lambda n: got.append(n))
+        finally:
+            _ur.urlopen = _orig
+        self.assertTrue(ok)
+        self.assertEqual(got, [42])
+
+    def test_fts_suggest_and_thread(self):
+        from kaal.memory import patterns as _p
+        _p.learn("login page ka bug fix karo", "auth token refresh thik kiya")
+        s = _p.suggest("login bug thik karna hai")
+        self.assertIn("login", s.lower())
+        th = _p.thread_context()
+        self.assertIn("login", th.lower())
+        try:
+            os.remove("memory/patterns.db")
+            os.remove("memory/thread.json")
+        except OSError:
+            pass
+
+    def test_vision_failsoft(self):
+        from kaal.skills.vision import describe
+        self.assertIn("mili nahi", describe("nope.png"))
+        self.assertIn("Format", describe("README.md"))
 
 
 class TestContextPower(unittest.TestCase):

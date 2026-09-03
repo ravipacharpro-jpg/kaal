@@ -7,6 +7,7 @@ from ..skills import tools as _tools
 from ..skills import rules as _rules
 from ..agents.orchestrator import PERSONAS
 from ..memory.store import recent as _recent
+from ..memory.patterns import thread_context as _thread_ctx
 from .router import try_chat
 
 SYSTEM = ("Tum Kaal ho — autonomous coding agent. Hindi/Hinglish me jawab.\n"
@@ -47,6 +48,12 @@ def _context(task):
         rows = _recent(3)
         if rows:
             parts.append("PAST TASKS:\n" + "\n".join(f"- {t[:60]} => {s[:100]}" for t, s in rows))
+    except Exception:
+        pass
+    try:
+        th = _thread_ctx()
+        if th:
+            parts.append(th)
     except Exception:
         pass
     return ("\n\n" + "\n\n".join(parts)) if parts else ""

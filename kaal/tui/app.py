@@ -297,6 +297,22 @@ def main_loop():
             parts = task.split(" ", 1)
             console.print(f"[green]{export_md(parts[1].strip() if len(parts) > 1 else '')}[/]")
             continue
+        if task.startswith("/thread"):
+            from ..memory.patterns import thread_context
+            parts = task.split()
+            if len(parts) > 1 and parts[1] == "clear":
+                import os as _os
+                p = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "memory", "thread.json"))
+                try:
+                    _os.remove(p)
+                except OSError:
+                    pass
+                console.print("[green]Thread clear — nayi shuruaat.[/]")
+                continue
+            th = thread_context()
+            console.print(Panel(th or "[dim]Thread khaali.[/]", title="🧵 Thread",
+                                border_style=th.ACCENT, padding=(0, 1)))
+            continue
         if task.startswith("/plan"):
             from ..planner import draft, write, read as plan_read
             what = task[5:].strip()

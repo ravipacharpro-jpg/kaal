@@ -83,6 +83,17 @@ def _cp_dir():
     os.makedirs(d, exist_ok=True)
     return d
 
+def _latest_cp():
+    try:
+        files = [os.path.join(_cp_dir(), f) for f in os.listdir(_cp_dir())
+                 if f.endswith(".json")]
+    except OSError:
+        return ""
+    files = [f for f in files if os.path.isfile(f)]
+    if not files:
+        return ""
+    return max(files, key=lambda f: (os.path.getmtime(f), f))
+
 def _touch(p):
     """Path ko tracked list me dalo (checkpoint iska fresh backup lega)."""
     import json
@@ -121,12 +132,13 @@ def checkpoint(tag="auto"):
             json.dump(idx, f)
     except Exception:
         pass
-    cid = f"{int(time.time())}-{tag}"
+    cid = f"{int(time.time()*1000)}-{tag}"
     with open(os.path.join(_cp_dir(), cid + ".json"), "w", encoding="utf-8") as f:
         json.dump(idx, f)
-    cps = sorted(os.listdir(_cp_dir()))
-    for old in cps[:-10]:
-        try: os.remove(os.path.join(_cp_dir(), old))
+    allc = sorted((os.path.join(_cp_dir(), f) for f in os.listdir(_cp_dir()) if f.endswith(".json")),
+                  key=lambda f: (os.path.getmtime(f), f))
+    for old in allc[:-10]:
+        try: os.remove(old)
         except OSError: pass
     return f"Checkpoint: {cid} ({len(idx)} files tracked)"
 
@@ -147,22 +159,19 @@ def _restore_idx(idx):
     return ok, skip
 
 def rewind():
-    """Last checkpoint pe wapas. Pehle current state auto-save (redo = dobara rewind)."""
+    """Last checkpoint (mtime se) pe wapas. Current auto-save (redo = dobara rewind)."""
     import json
-    try:
-        cps = sorted(os.listdir(_cp_dir()))
-    except OSError:
-        return "Koi checkpoint nahi"
-    if not cps:
+    latest = _latest_cp()
+    if not latest:
         return "Koi checkpoint nahi"
     try:
         with open(_index_path(), encoding="utf-8") as f:
             cur = json.load(f)
     except Exception:
         cur = {}
-    with open(os.path.join(_cp_dir(), f"{int(time.time())}-pre-rewind.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(_cp_dir(), f"{int(time.time()*1000)}-pre-rewind.json"), "w", encoding="utf-8") as f:
         json.dump(cur, f)
-    with open(os.path.join(_cp_dir(), cps[-1]), encoding="utf-8") as f:
+    with open(latest, encoding="utf-8") as f:
         idx = json.load(f)
     ok, skip = _restore_idx(idx)
     try:
