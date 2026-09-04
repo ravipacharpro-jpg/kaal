@@ -858,5 +858,73 @@ class TestBgHooks(unittest.TestCase):
             rt.VAULT, rt.CONFIG_DIR = old_v, old_c
 
 
+class TestSweDataset(unittest.TestCase):
+    """SWE dataset runner: patch + grading + batch."""
+
+    def _mk_repo(self):
+        import shutil, subprocess, tempfile
+        d = tempfile.mkdtemp(prefix="kaal-swe-t-")
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        def g(*a):
+            return subprocess.run(["git", "-C", d] + list(a), capture_output=True, text=True)
+        g("init"); g("config", "user.email", "t@t.t"); g("config", "user.name", "t")
+        with open(os.path.join(d, "calc.py"), "w") as f:
+            f.write("def add(a, b):\n return a - b\n")
+        with open(os.path.join(d, "test_calc.py"), "w") as f:
+            f.write("from calc import add\ndef test_add():\n assert add(1, 2) == 3\n")
+        g("add", "-A"); g("commit", "-m", "buggy")
+        patch = ("--- a/calc.py\n+++ b/calc.py\n@@ -1,2 +1,2 @@\n"
+                 " def add(a, b):\n- return a - b\n+ return a + b\n")
+        return d, patch
+
+    def test_grade_resolved(self):
+        import shutil
+        if shutil.which("git") is None:
+            self.skipTest("git nahi mili")
+        from benchmarks.swe_run import grade_instance
+        d, patch = self._mk_repo()
+        r = grade_instance({"id": "t1", "repo": d, "base_commit": "HEAD",
+                            "patch": patch,
+                            "fail_to_pass": ["python3 -m pytest -q test_calc.py"],
+                            "pass_to_pass": []}, timeout=120)
+        self.assertEqual(r["status"], "graded")
+        self.assertTrue(r["resolved"], r)
+
+    def test_grade_no_patch_trivial(self):
+        import shutil
+        if shutil.which("git") is None:
+            self.skipTest("git nahi mili")
+        from benchmarks.swe_run import grade_instance, apply_patch
+        d, _ = self._mk_repo()
+        ok, _ = apply_patch(d, "")
+        self.assertTrue(ok)
+        import subprocess
+        subprocess.run(["git", "-C", d, "checkout", "--", "."], capture_output=True)
+        r = grade_instance({"id": "t2", "repo": d, "base_commit": "HEAD",
+                            "patch": "",
+                            "fail_to_pass": ["python3 -m pytest -q test_calc.py"],
+                            "pass_to_pass": []}, timeout=120)
+        self.assertFalse(r["resolved"])  # pre FAIL → unresolved (not trivial)
+
+    def test_run_dataset_batch(self):
+        import shutil, json as _js, tempfile
+        if shutil.which("git") is None:
+            self.skipTest("git nahi mili")
+        from benchmarks.swe_run import run_dataset
+        d, patch = self._mk_repo()
+        insts = [
+            {"id": "good", "repo": d, "base_commit": "HEAD", "patch": patch,
+             "fail_to_pass": ["python3 -m pytest -q test_calc.py"], "pass_to_pass": []},
+            {"id": "bad", "repo": d, "base_commit": "HEAD", "patch": "garbage not a diff",
+             "fail_to_pass": ["python3 -m pytest -q test_calc.py"], "pass_to_pass": []},
+        ]
+        fp = os.path.join(tempfile.mkdtemp(), "ds.json")
+        with open(fp, "w") as f:
+            _js.dump(insts, f)
+        done, total = run_dataset(fp, timeout=120)
+        self.assertEqual(total, 2)
+        self.assertEqual(done, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
