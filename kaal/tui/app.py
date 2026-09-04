@@ -32,6 +32,8 @@ from ..i18n import t as _t
 from . import theme as th
 from .brand import brand, agent_name
 
+DIM = th.DIM
+
 console = Console()
 
 
@@ -191,7 +193,7 @@ def dashboard_data():
     from ..skills import promptcache as _pcd
     from ..platform_adapt import detect as _pdet
     d = {"platform": "?", "model": "?", "effort": "?", "budget": "?",
-         "session": "?", "cache": "?", "keys": {}, "sessions": []}
+         "session": "?", "cache": "?", "keys": {}, "sessions": [], "lsp": "?"}
     try:
         d["platform"] = _pdet()
     except Exception:
@@ -221,6 +223,11 @@ def dashboard_data():
         pass
     try:
         d["sessions"] = [(t[:40], s[:60]) for t, s in recent(5)]
+    except Exception:
+        pass
+    try:
+        import shutil as _sh
+        d["lsp"] = "pyright" if _sh.which("pyright") or _sh.which("pyright-langserver") else "disabled"
     except Exception:
         pass
     return d
@@ -433,7 +440,23 @@ def main_loop():
     except Exception:
         pass
     show_header()
+    import time as _tt
+    state = {"history": [], "todos": [], "dash": {}, "session_id": f"s-{int(_tt.time())}"}
+    try:
+        state["dash"] = dashboard_data()
+    except Exception:
+        pass
     while True:
+        try:
+            from . import screen as _scr
+            console.clear()
+            try:
+                state["dash"] = dashboard_data()
+            except Exception:
+                pass
+            console.print(_scr.render(state))
+        except Exception:
+            pass
         try:
             task = Prompt.ask(f"[bold {th.ACCENT}]{agent_name()}[/] [dim]›[/]").strip()
         except (EOFError, KeyboardInterrupt):
@@ -441,6 +464,13 @@ def main_loop():
             break
         if not task:
             continue
+        if len(task) == 1 and ord(task[0]) < 32:
+            # Ctrl-key diagnosis (Termux sends different bytes) — logs me dikhega
+            try:
+                from .. import log as _lg
+                _lg.info(f"ctrl-key received: {task!r}")
+            except Exception:
+                pass
         if task in ("/quit", "/q", "quit"):
             console.print(f"[yellow]{_t('quit_short')}[/]")
             break
@@ -1076,8 +1106,25 @@ def main_loop():
                     break
             continue
         try:
+            import time as _tt2
+            _t_start = _tt2.time()
             res = _run_with_live(task)
+            _secs = round(_tt2.time() - _t_start, 1)
         except KeyboardInterrupt:
             console.print(f"\n[yellow]{_t('task_cancelled')}[/]")
             continue
+        try:
+            state["history"].append({"kind": "task", "text": task})
+            state["history"].append({"kind": "thought", "secs": f"{_secs}s"})
+            state["history"].append({"kind": "result",
+                                     "text": str(res.get("summary", ""))[:500]})
+            state["todos"] = res.get("todos", []) or []
+            try:
+                from ..models.router import pop_notices as _pn
+                for _n in _pn():
+                    state["history"].append({"kind": "notice", "text": _n})
+            except Exception:
+                pass
+        except Exception:
+            pass
         show_result(res)

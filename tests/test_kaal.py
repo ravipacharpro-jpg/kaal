@@ -1260,9 +1260,24 @@ class TestPaletteSetup(unittest.TestCase):
         from kaal.tui.app import dashboard_data, show_dashboard
         d = dashboard_data()
         for k in ("platform", "model", "effort", "budget", "session",
-                  "cache", "keys", "sessions"):
+                  "cache", "keys", "sessions", "lsp"):
             self.assertIn(k, d)
         show_dashboard()  # crash nahi hona chahiye
+
+    def test_screen_render(self):
+        from kaal.tui import screen as scr
+        from rich.console import Console
+        st = {"history": [{"kind": "task", "text": "hi"},
+                          {"kind": "thought", "secs": "0.1s"},
+                          {"kind": "result", "text": "done ok"}],
+              "todos": [{"title": "a", "agent": "coder", "status": "done"}],
+              "dash": {"budget": "1/2", "model": "auto", "effort": "medium",
+                       "session": "0/1", "cache": "0/0", "keys": {},
+                       "sessions": [], "lsp": "disabled"},
+              "session_id": "s-test"}
+        for w in (60, 100, 140):
+            lay = scr.render(st, console=Console(width=w))
+            self.assertIsNotNone(lay)
 
     def test_brand_banner(self):
         from kaal.tui.brand import brand, VERSION, agent_name, BIG

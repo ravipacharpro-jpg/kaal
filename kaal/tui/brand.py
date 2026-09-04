@@ -15,10 +15,10 @@ BIG = """[bold cyan]  ██╗  ██╗ █████╗  █████�
 BANNER = BIG + """
 [dim]       ◇       ◇       ◇
        │       │       │
-[/dim][bold cyan]   ╭───────┬───────┬───────╮
-   │ THINK │  ACT  │ VERIFY│
+[/][bold]   ╭───────┬───────┬───────╮
+   │ [white]THINK[/] │ [cyan]ACT[/]  │ [green]VERIFY[/]│
    ╰───────┴───────┴───────╯[/]
-[dim]             ◉  AHEAD OF TIME · {version}[/]""".format(version=VERSION)
+[cyan]             ●[/][dim]  KAAL · AHEAD OF TIME · {version}[/]""".format(version=VERSION)
 
 
 def agent_name():
