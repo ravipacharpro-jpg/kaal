@@ -15,8 +15,8 @@ BIG = """[bold cyan]  ██╗  ██╗ █████╗  █████�
 BANNER = BIG + """
 [dim]       ◇       ◇       ◇
        │       │       │
-[/][bold]   ╭───────┬───────┬───────╮
-   │ [white]THINK[/] │ [cyan]ACT[/]  │ [green]VERIFY[/]│
+[/][cyan]   ╭───────┬───────┬───────╮
+   │[/][white] THINK [/][cyan]│[/][bold cyan] ACT  [/][cyan]│[/][green] VERIFY[/][cyan]│
    ╰───────┴───────┴───────╯[/]
 [cyan]             ●[/][dim]  KAAL · AHEAD OF TIME · {version}[/]""".format(version=VERSION)
 
