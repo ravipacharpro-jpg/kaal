@@ -12,12 +12,12 @@ BIG = """[bold cyan]  ██╗  ██╗ █████╗  █████�
   ██║  ██╗██║  ██║██║  ██║███████╗
   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝[/]"""
 
-BANNER = """[dim]       ◇       ◇       ◇
+BANNER = BIG + """
+[dim]       ◇       ◇       ◇
        │       │       │
 [/dim][bold cyan]   ╭───────┬───────┬───────╮
    │ THINK │  ACT  │ VERIFY│
    ╰───────┴───────┴───────╯[/]
-""" + BIG + """
 [dim]             ◉  AHEAD OF TIME · {version}[/]""".format(version=VERSION)
 
 
