@@ -48,7 +48,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands (38 — poori list: [`docs/COMMANDS.md`](docs/COMMANDS.md), palette: Ctrl+P): `/palette` `/setup` `/endpoints` `/platform` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/theme` `/session` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
+TUI commands (39 — poori list: [`docs/COMMANDS.md`](docs/COMMANDS.md), palette: Ctrl+P): `/palette` `/dashboard` `/setup` `/endpoints` `/platform` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/theme` `/session` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)

@@ -22,6 +22,7 @@ COMMANDS = [
     ("/session", "past sessions list/resume", None),
     ("/setup", "onboarding: provider keys add + test", None),
     ("/agents", "specialist personas dekho", None),
+    ("/dashboard", "status+sessions+keys overview", None),
     ("/platform", "platform capabilities + probes", None),
     ("/endpoints", "20 targets + budget", None),
     ("/budget", "kharch summary", None),

@@ -1,6 +1,6 @@
 # Kaal Commands
 
-Total: 38 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/palette.py`.
+Total: 39 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/palette.py`.
 
 - `/bg <task>` — background + live-todo + interject
 - `/plan <task>` — numbered plan likho
@@ -18,6 +18,7 @@ Total: 38 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/pale
 - `/session` — past sessions list/resume
 - `/setup` — onboarding: provider keys add + test
 - `/agents` — specialist personas dekho
+- `/dashboard` — status+sessions+keys overview
 - `/platform` — platform capabilities + probes
 - `/endpoints` — 20 targets + budget
 - `/budget` — kharch summary

@@ -1,5 +1,10 @@
 # Kaal Changelog
 
+## v0.6.0 — premium-tui batch (OpenCode-level)
+- Added: `/dashboard` — status+sessions+keys side-by-side (narrow pe stacked)
+- Result footer me session spend + cache saved (cost transparency)
+- Commands doc regen (39), footer hint me /dashboard
+
 ## v0.6.0 — premium-repo batch
 - README hero: badges, real demo output, comparison table, docs links
 - `docs/COMMANDS.md` (palette-generated, 38), `docs/ARCHITECTURE.md` (mermaid)

@@ -1193,6 +1193,14 @@ class TestPaletteSetup(unittest.TestCase):
         cmds2 = filter_commands("")
         self.assertGreater(len(cmds2), 30)
 
+    def test_dashboard_data(self):
+        from kaal.tui.app import dashboard_data, show_dashboard
+        d = dashboard_data()
+        for k in ("platform", "model", "effort", "budget", "session",
+                  "cache", "keys", "sessions"):
+            self.assertIn(k, d)
+        show_dashboard()  # crash nahi hona chahiye
+
     def test_platform_matrix(self):
         from kaal import platform_adapt as pa
         self.assertIn(pa.detect(), ("termux", "linux", "macos", "windows"))

@@ -146,6 +146,82 @@ def show_header():
     console.print(th.FOOTER_HINT + "\n")
 
 
+def dashboard_data():
+    """Dashboard ke liye data dict (pure-ish, testable)."""
+    from ..models.router import session_used, session_cap, get_effort
+    from ..models.router import get_model, key_health
+    from ..skills import promptcache as _pcd
+    from ..platform_adapt import detect as _pdet
+    d = {"platform": "?", "model": "?", "effort": "?", "budget": "?",
+         "session": "?", "cache": "?", "keys": {}, "sessions": []}
+    try:
+        d["platform"] = _pdet()
+    except Exception:
+        pass
+    try:
+        d["model"] = get_model()
+        d["effort"] = get_effort()
+    except Exception:
+        pass
+    try:
+        b = budget_status()
+        d["budget"] = f"{b['used']}/{b['budget']} ({b['pct']}%)"
+    except Exception:
+        pass
+    try:
+        d["session"] = f"{session_used()}/{session_cap()}"
+    except Exception:
+        pass
+    try:
+        n, s = _pcd.stats()
+        d["cache"] = f"{n} entries, ~{s} saved"
+    except Exception:
+        pass
+    try:
+        d["keys"] = {p: len(r) for p, r in key_health().items()}
+    except Exception:
+        pass
+    try:
+        d["sessions"] = [(t[:40], s[:60]) for t, s in recent(5)]
+    except Exception:
+        pass
+    return d
+
+
+def show_dashboard():
+    """OpenCode-style overview: status | sessions | keys (side-by-side)."""
+    d = dashboard_data()
+    t1 = Table(show_header=False, border_style="dim", box=None, pad_edge=False)
+    t1.add_column("K", style="dim")
+    t1.add_column("V", style="bold")
+    for k in ("platform", "model", "effort", "budget", "session", "cache"):
+        t1.add_row(k, str(d[k])[:40])
+    p1 = Panel(t1, title=" Status", border_style=th.ACCENT, padding=(0, 1))
+    if d["sessions"]:
+        t2 = Table(show_header=False, border_style="dim", box=None, pad_edge=False)
+        t2.add_column("Task", style="bold")
+        for t, _s in d["sessions"]:
+            t2.add_row(t[:44])
+    else:
+        t2 = Text("Khaali — pehla task karo.", style="dim")
+    p2 = Panel(t2, title=" Sessions", border_style="dim", padding=(0, 1))
+    if d["keys"]:
+        t3 = Table(show_header=False, border_style="dim", box=None, pad_edge=False)
+        t3.add_column("Provider", style="bold")
+        t3.add_column("Keys", justify="right")
+        for p, n in d["keys"].items():
+            t3.add_row(p, str(n))
+    else:
+        t3 = Text("No keys — /setup karo.", style="dim")
+    p3 = Panel(t3, title=" Keys", border_style="dim", padding=(0, 1))
+    if console.width >= 100:
+        console.print(Columns([p1, p2, p3], equal=True, expand=True))
+    else:
+        console.print(p1)
+        console.print(p2)
+        console.print(p3)
+
+
 def show_endpoints():
     t = Table(title=" Endpoints", show_header=True,
               header_style=f"bold {th.ACCENT}", border_style="dim",
@@ -178,12 +254,16 @@ def show_todos(todos):
 
 def show_result(res):
     wide = console.width >= 100
-    body = Group(
-        Markdown(res["summary"][:600]),
-        Text(f"via {res['endpoint']} · {res.get('mode', 'single')} · "
-             f"{res.get('budget', '')} · memory saved",
-             style=DIM),
-    )
+    footer = (f"via {res['endpoint']} · {res.get('mode', 'single')} · "
+              f"{res.get('budget', '')} · memory saved")
+    try:
+        from ..models.router import session_used as _su, session_cap as _sc
+        from ..skills import promptcache as _pce
+        _n, _s = _pce.stats()
+        footer += f" · session {_su()}/{_sc()} · cache {_n}/{_s}"
+    except Exception:
+        pass
+    body = Group(Markdown(res["summary"][:600]), Text(footer, style=DIM))
     result = Panel(body, title="[bold green] Result[/]",
                     border_style="dim", padding=(1, 2))
     todos = show_todos(res["todos"])
@@ -343,6 +423,9 @@ def main_loop():
                 continue
         if task == "/endpoints":
             show_endpoints()
+            continue
+        if task == "/dashboard":
+            show_dashboard()
             continue
         if task == "/platform":
             from ..platform_adapt import capabilities as _caps
