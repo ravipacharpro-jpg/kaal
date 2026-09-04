@@ -55,7 +55,7 @@ kaal --telegram   # phone se task (config/telegram.json me token+ids)
 kaal --heartbeat  # cron/Termux:JobScheduler se one-shot due jobs
 kaal --daemon 300 # PID file + serve loop (stop: kill, PID file delete)
 kaal --mode json "task"  # single task → JSON (pip/tool friendly)
-kaal --mode rpc          # JSON-RPC stdio bridge (IDE/tool integration, minimal ACP-style subset)
+kaal --mode rpc          # JSON-RPC stdio bridge (IDE integration: prompt/stream, session/cancel+interject, fs, commands)
 python3 benchmarks/swe_run.py dataset.json --out results.json  # SWE-style grading
 ```
 - **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
@@ -69,5 +69,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.6.0 — palette/keys batch in. Tests 85 pass + benchmark 12/12 (hermetic).
+v0.6.0 — acp/lsp batch in. Tests 97 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.

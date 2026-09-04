@@ -41,6 +41,7 @@ COMMANDS = [
     ("/cache", "prompt cache stats/clear", ["clear"]),
     ("/comment-zh <file>", "Chinese comments (code same)", None),
     ("/reflect", "past reflections dekho", None),
+    ("/lsp", "diagnostics/hover/definition (server ho to)", ["diag", "hover", "def"]),
     ("/quit", "band karo", None),
 ]
 

@@ -137,3 +137,45 @@ def diagnose(filepath, server_cmd="pyright-langserver --stdio", root=".", timeou
         return f"LSP: {len(diags)} diagnostic(s)\n" + "\n".join(lines)
     except Exception as e:
         return f"LSP fail: {e}"[:200]
+
+def symbol_info(filepath, line, col, method="hover", server_cmd="pyright-langserver --stdio",
+                root=".", timeout=25):
+    """textDocument/hover ya textDocument/definition — server ho tabhi.
+    Returns short str. Binary nahi to 'n/a ...'."""
+    import os
+    if os.name == "nt":
+        return "n/a (Windows pipes pe select() nahi — Linux/macOS/Termux pe chalao)"
+    if method not in ("hover", "definition"):
+        return "n/a (method: hover|definition)"
+    if not available(server_cmd):
+        return "n/a (LSP server nahi — PC pe pyright install karo)"
+    fp = os.path.abspath(filepath)
+    if not os.path.isfile(fp):
+        return "n/a (file nahi mili)"
+    try:
+        with open(fp, encoding="utf-8", errors="replace") as f:
+            text = f.read(200000)
+    except OSError as e:
+        return f"n/a ({e})"[:120]
+    uri = "file://" + fp
+    root_uri = "file://" + os.path.abspath(root)
+    lsp_method = f"textDocument/{method}"
+    try:
+        with LSPClient(server_cmd) as c:
+            c.request("initialize", {"processId": None, "rootUri": root_uri,
+                                     "capabilities": {}}, timeout=timeout)
+            c.notify("initialized", {})
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "python", "version": 1, "text": text}})
+            res, err = c.request(lsp_method, {"textDocument": {"uri": uri},
+                                              "position": {"line": int(line),
+                                                           "character": int(col)}},
+                                 timeout=timeout)
+            c.request("shutdown", None, timeout=10)
+        if err:
+            return f"LSP {method} fail: {err}"[:150]
+        if not res:
+            return f"LSP {method}: kuch nahi mila"
+        return str(res)[:800]
+    except Exception as e:
+        return f"LSP fail: {e}"[:200]

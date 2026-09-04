@@ -1,16 +1,30 @@
 """Machine bridge — `--mode json` (single task) aur `--mode rpc` (ACP-style JSON-RPC over stdio).
 IDE/tool integration ke liye: har line ek JSON request, har line ek JSON response.
-Methods: initialize, session/new, prompt/run, session/list, shutdown.
-Full ACP spec nahi — minimal, documented subset (README me saaf likha hai).
+Methods: initialize, session/new, prompt/run, prompt/stream, session/cancel,
+session/list, fs/readTextFile, fs/writeTextFile, availableCommands, shutdown.
+Full ACP spec nahi — extended documented subset (README me saaf likha hai).
+prompt/* worker threads me chalte hain taaki session/cancel beech me aa sake.
 """
-import json, sys, time
+import json, queue, sys, threading, time
 
-METHODS = ("initialize", "session/new", "prompt/run", "session/list", "shutdown")
+METHODS = ("initialize", "session/new", "prompt/run", "prompt/stream",
+           "session/cancel", "session/interject", "session/list",
+           "fs/readTextFile", "fs/writeTextFile", "availableCommands", "shutdown")
 
-def _run_task(task):
+_SESSIONS = {}
+_SLOCK = threading.Lock()
+
+def _new_session():
+    sid = f"s-{int(time.time() * 1000)}"
+    with _SLOCK:
+        _SESSIONS[sid] = {"cancel": threading.Event(), "inbox": queue.Queue()}
+    return sid
+
+def _run_task(task, cancel=None, inbox=None, on_token=None):
     from .agent import run_task
     try:
-        r = run_task(task, ask_cb=lambda q: False)
+        r = run_task(task, ask_cb=lambda q: False, cancel=cancel, inbox=inbox,
+                     on_token=on_token)
         return {"status": r.get("status", "done"), "summary": r.get("summary", "")[:500],
                 "endpoint": r.get("endpoint", ""), "mode": r.get("mode", "")}
     except Exception as e:
@@ -24,15 +38,54 @@ def handle(req):
     p = req.get("params", {}) or {}
     rid = req.get("id")
     if m == "initialize":
-        return {"id": rid, "result": {"agent": "kaal", "version": "0.1.1-dev",
+        return {"id": rid, "result": {"agent": "kaal", "version": "0.6.0",
                                       "methods": list(METHODS)}}
     if m == "session/new":
-        return {"id": rid, "result": {"session_id": f"s-{int(time.time())}"}}
+        return {"id": rid, "result": {"session_id": _new_session()}}
     if m == "prompt/run":
         task = str(p.get("task", ""))[:2000]
         if not task:
             return {"id": rid, "error": "empty-task"}
         return {"id": rid, "result": _run_task(task)}
+    if m == "session/cancel":
+        sid = str(p.get("session_id", ""))
+        with _SLOCK:
+            s = _SESSIONS.get(sid)
+        if not s:
+            return {"id": rid, "error": f"unknown-session: {sid}"}
+        s["cancel"].set()
+        return {"id": rid, "result": {"cancelled": sid}}
+    if m == "session/interject":
+        sid = str(p.get("session_id", ""))
+        note = str(p.get("note", ""))[:300]
+        with _SLOCK:
+            s = _SESSIONS.get(sid)
+        if not s:
+            return {"id": rid, "error": f"unknown-session: {sid}"}
+        if note:
+            s["inbox"].put(note)
+        return {"id": rid, "result": {"noted": True}}
+    if m == "fs/readTextFile":
+        try:
+            from .skills import files as _f
+            return {"id": rid, "result": {"text": _f.read_file(str(p.get("path", "")))[:8000]}}
+        except Exception as e:
+            return {"id": rid, "error": f"read fail: {e}"[:150]}
+    if m == "fs/writeTextFile":
+        if p.get("approve") is not True:
+            return {"id": rid, "error": "approve:true chahiye (destructive op)"}
+        try:
+            from .skills import files as _f2
+            return {"id": rid, "result": {"msg": _f2.write_file(
+                str(p.get("path", "")), str(p.get("content", "")))[:300]}}
+        except Exception as e:
+            return {"id": rid, "error": f"write fail: {e}"[:150]}
+    if m == "availableCommands":
+        try:
+            from .tui import palette as _pal
+            return {"id": rid, "result": [{"cmd": c, "desc": d} for c, d, _o in _pal.COMMANDS]}
+        except Exception:
+            return {"id": rid, "result": []}
     if m == "session/list":
         try:
             from .memory.store import recent
@@ -45,22 +98,64 @@ def handle(req):
     return {"id": rid, "error": f"unknown-method: {m}"}
 
 def serve_stdio():
-    """stdin lines → stdout lines. IDE (ACP-compatible harness) isko spawn kare."""
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            req = json.loads(line)
-        except Exception:
-            sys.stdout.write(json.dumps({"error": "bad-json"}) + "\n")
+    """stdin lines → stdout lines. prompt/* worker threads me (cancel beech me).
+    Streaming chunks event-lines ke roop me aate hain (same id)."""
+    from concurrent.futures import ThreadPoolExecutor
+    out_lock = threading.Lock()
+
+    def emit(obj):
+        with out_lock:
+            sys.stdout.write(json.dumps(obj) + "\n")
             sys.stdout.flush()
-            continue
-        res = handle(req)
-        sys.stdout.write(json.dumps(res) + "\n")
-        sys.stdout.flush()
-        if req.get("method") == "shutdown":
-            break
+
+    def do_stream(rid, task):
+        sid = _new_session()
+        with _SLOCK:
+            s = _SESSIONS[sid]
+        emit({"id": rid, "result": {"session_id": sid, "streaming": True}})
+
+        def _tok(piece):
+            emit({"id": rid, "event": "chunk", "text": str(piece)[:300]})
+
+        res = _run_task(task, cancel=s["cancel"], inbox=s["inbox"], on_token=_tok)
+        emit({"id": rid, "event": "done", "result": res})
+        with _SLOCK:
+            _SESSIONS.pop(sid, None)
+
+    def do_run(rid, task):
+        emit({"id": rid, "result": _run_task(task)})
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                req = json.loads(line)
+            except Exception:
+                emit({"error": "bad-json"})
+                continue
+            m = req.get("method", "") if isinstance(req, dict) else ""
+            if m == "prompt/stream":
+                task = str((req.get("params") or {}).get("task", ""))[:2000]
+                if not task:
+                    emit({"id": req.get("id"), "error": "empty-task"})
+                    continue
+                ex.submit(do_stream, req.get("id"), task)
+                continue
+            if m == "prompt/run":
+                task = str((req.get("params") or {}).get("task", ""))[:2000]
+                if not task:
+                    emit({"id": req.get("id"), "error": "empty-task"})
+                    continue
+                fut = ex.submit(do_run, req.get("id"), task)
+                if req.get("params", {}).get("wait", True):
+                    fut.result()
+                continue
+            res = handle(req)
+            emit(res)
+            if m == "shutdown":
+                break
 
 def run_json(task):
     """Single task → ek JSON object print (pip/tool friendly)."""

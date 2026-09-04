@@ -800,6 +800,33 @@ def main_loop():
             console.print(f"[dim]Prompt cache: {n} entries, ~{s} tokens saved (TTL 24h)[/]")
             console.print("[dim]Use: /cache clear · off: economy.cache=false[/]")
             continue
+        if task.startswith("/lsp"):
+            from ..skills import lsp as _lsp
+            parts = task.split()
+            if len(parts) < 2 or parts[1] not in ("diag", "hover", "def"):
+                console.print("[dim]Use: /lsp diag <file> | /lsp hover <file:line:col> | /lsp def <file:line:col>[/]")
+                console.print("[dim]LSP server chahiye (PC: pyright). Nahi to py_compile fallback.[/]")
+                continue
+            if parts[1] == "diag":
+                tgt = parts[2] if len(parts) > 2 else ""
+                if not tgt:
+                    console.print("[dim]Use: /lsp diag <file>[/]")
+                    continue
+                from ..skills import project as _pj
+                console.print(Panel(f"{_lsp.diagnose(tgt)}\n---\n{_pj.lint_file(tgt)[:300]}",
+                                    title=f" LSP diag: {tgt}", border_style=th.ACCENT, padding=(0, 1)))
+                continue
+            try:
+                fp, lc = parts[2].rsplit(":", 2)[0], parts[2].rsplit(":", 2)[1:]
+                ln, cc = int(lc[0]) - 1, int(lc[1])
+            except Exception:
+                console.print("[dim]Use: /lsp hover <file:line:col>[/]")
+                continue
+            method = "hover" if parts[1] == "hover" else "definition"
+            console.print(Panel(_lsp.symbol_info(fp, ln, cc, method)[:1200],
+                                title=f" LSP {parts[1]}: {parts[2]}",
+                                border_style=th.ACCENT, padding=(0, 1)))
+            continue
         if task.startswith("/comment-zh"):
             from ..skills import zhcomment as _zh
             parts = task.split(" ", 1)

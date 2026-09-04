@@ -1,5 +1,10 @@
 # Kaal Changelog
 
+## v0.6.0 — acp/lsp batch (PC track)
+- RPC extended: prompt/stream (chunks), session/cancel + interject (worker threads), fs read/write (approve-gated), availableCommands
+- LSP: hover/definition via generic stdio client + `/lsp diag|hover|def` (py_compile fallback)
+- Palette + footer me `/lsp`
+
 ## v0.6.0 — parallel-engine batch (PC track)
 - Added: task-graph engine (`kaal/parallel.py` — DAG levels, risky-chain, ordered aggregate, cancel)
 - Legacy multi-path ab graph engine use karta hai (writes kabhi parallel nahi)
