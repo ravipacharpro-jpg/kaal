@@ -30,3 +30,21 @@ def describe(root="."):
     if d["type"] == "unknown":
         return "Project type pata nahi — test command batao"
     return f"Project: {d['type']} | test: {d['test']} | lint: {d['lint']}"
+
+CTX_FILES = ("AGENTS.md", "CLAUDE.md")
+
+def project_context(root=".", max_chars=1500):
+    """AGENTS.md/CLAUDE.md project instructions padho (OpenCode-style convention).
+    Nahi mili to ''. Brain system prompt me inject hoti hai."""
+    root = os.path.abspath(os.path.expanduser(root))
+    for name in CTX_FILES:
+        p = os.path.join(root, name)
+        try:
+            if os.path.isfile(p) and os.path.getsize(p) < 20000:
+                with open(p, encoding="utf-8", errors="replace") as f:
+                    txt = f.read().strip()[:max_chars]
+                if txt:
+                    return f"PROJECT CONTEXT ({name} se):\n{txt}"
+        except OSError:
+            continue
+    return ""

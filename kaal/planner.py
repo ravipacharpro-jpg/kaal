@@ -3,7 +3,7 @@ Bina key ke legacy decompose se plan, key ho to brain se.
 """
 import os
 
-PLAN = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "PLAN.md"))
+PLAN = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "PLAN.md"))
 
 def write(task, steps):
     with open(PLAN, "w", encoding="utf-8") as f:

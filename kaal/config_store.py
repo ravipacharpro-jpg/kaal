@@ -4,7 +4,7 @@ User file nahi to defaults. Agent khud padhta hai, user ko haath se edit nahi ka
 import os, json
 from .config_defaults import DEFAULTS
 
-REPO_CONFIG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config"))
+REPO_CONFIG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "config"))
 FILES = {"economy": "economy.json", "permissions": "permissions.json", "tui": "tui.json",
          "storage": "storage.json", "sandbox": "sandbox.json", "model": "model.json"}
 

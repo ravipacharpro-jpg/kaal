@@ -15,28 +15,13 @@ PERSONAS = {
     "security_architect": "Security Architect / AppSec: code security review. SQLi, XSS, auth bypass, secrets exposure check karo. OWASP top 10 mindset.",
     "database_optimizer": "Database Optimizer: query plan, indexes, N+1 problems. Performance nishkarsh.",
     "software_architect": "Software Architect: bade refactor tasks ke liye. System design, modularity, scalability mindset.",
+    "planner": "Planner: read-only planning. Pehle repo_scan/file_read se samjho, phir numbered plan likho — code/file change mat karo.",
+    "explorer": "Explorer: read-only research. Grep/glob/file_read/webfetch se dhoondho, facts + paths ke saath report — change mat karo.",
 }
 
 ROLES = ("coder", "researcher", "analyzer", "github_specialist",
           "minimal_change_engineer", "code_reviewer", "security_architect",
-          "database_optimizer", "software_architect", "general")
-
-PERSONAS = {
-    "coder": "Coder: pehle repo_scan/file_read se context, chote diffs, test_run se verify.",
-    "researcher": "Researcher: 2-3 sources browser_fetch, facts + URLs ke saath summary.",
-    "analyzer": "Analyzer: data compare karke table-style nishkarsh, andaza nahi.",
-    "github_specialist": "GitHuber: repo/issues dico, numbers exact (stars, issue #).",
-    "general": "Generalist: seedha kaam, short summary.",
-    "minimal_change_engineer": "Minimal Change Engineer: sirf jo poocha wahi fix karo, scope creep nahi. Chhote targeted changes, bilkul minimal diff. Over-engineering mat karo.",
-    "code_reviewer": "Code Reviewer: self-review pass ke liye. Security, edge cases, error handling check karo. Fail to fix karo.",
-    "security_architect": "Security Architect / AppSec: code security review. SQLi, XSS, auth bypass, secrets exposure check karo. OWASP top 10 mindset.",
-    "database_optimizer": "Database Optimizer: query plan, indexes, N+1 problems. Performance nishkarsh.",
-    "software_architect": "Software Architect: bade refactor tasks ke liye. System design, modularity, scalability mindset.",
-}
-
-ROLES = ("coder", "researcher", "analyzer", "github_specialist",
-          "minimal_change_engineer", "code_reviewer", "security_architect",
-          "database_optimizer", "software_architect", "general")
+          "database_optimizer", "software_architect", "planner", "explorer", "general")
 
 def persona(agent):
     return PERSONAS.get(agent, PERSONAS["general"])
@@ -55,6 +40,10 @@ def classify(step):
         return "software_architect"
     if "minimal" in s or "small change" in s or "just fix" in s or "scope creep" in s:
         return "minimal_change_engineer"
+    if "plan" in s or "yojana" in s or "strategy" in s or "steps batao" in s:
+        return "planner"
+    if "explore" in s or "dhoond" in s or "khoj" in s or "find " in s or "search" in s or "kahan hai" in s:
+        return "explorer"
     if "code" in s or "python" in s or "fix" in s or "bug" in s or "function" in s:
         return "coder"
     if "research" in s or "browser" in s or "web" in s or "site" in s or "http" in s or "kya hai" in s:

@@ -1,6 +1,7 @@
 # Kaal — Ahead of Time
 
-Fully autonomous AI agent — Termux / Linux / macOS / Windows.
+Rule-based + optional-LLM agent — Termux / Linux / macOS / Windows.
+API key ya local Ollama ho to LLM brain, nahi to fast keyword path (AI nahi — neeche Design me saaf likha hai).
 Premium Rich TUI: Todo panel + 1-line live Hindi status, TUI me code dump nahi.
 
 ## Install
@@ -29,7 +30,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/recipe` `/checkpoint` `/rewind` `/export` `/sandbox` `/quit`
+TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)
@@ -63,5 +64,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.1-dev — security batch in. Tests 46 pass + benchmark 12/12 (hermetic).
+v0.1.1-dev — security batch in. Tests 51 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.

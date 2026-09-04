@@ -509,6 +509,61 @@ class TestCrossPlatform(unittest.TestCase):
         self.assertIn("minimal_change_engineer", ROLES)
         self.assertIn("security_architect", ROLES)
 
+    def test_plan_explore_roles(self):
+        """OpenCode-style Plan/Explore read-only roles."""
+        from kaal.agents.orchestrator import classify, persona, PERSONAS, ROLES
+        self.assertIn("planner", PERSONAS)
+        self.assertIn("explorer", PERSONAS)
+        self.assertIn("planner", ROLES)
+        self.assertIn("explorer", ROLES)
+        self.assertEqual(classify("plan banao pehle"), "planner")
+        self.assertEqual(classify("file kahan hai dhoondo"), "explorer")
+        # existing routing untouched
+        self.assertEqual(classify("code fix karo"), "coder")
+        self.assertEqual(classify("github check karo"), "github_specialist")
+        self.assertTrue(len(persona("planner")) > 20)
+        self.assertTrue(len(persona("explorer")) > 20)
+
+
+class TestWishlistBatch(unittest.TestCase):
+    """prompt.cpp wishlist batch: write-guard, project ctx, effort."""
+
+    def test_write_file_blocks_bad_python(self):
+        from kaal.skills import files as f
+        import shutil
+        d = os.path.abspath("memory/.test-tmp6")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        bad = os.path.join(d, "bad.py")
+        r = f.write_file(bad, "def broken(:\n  pass")
+        self.assertIn("roki", r)
+        self.assertFalse(os.path.exists(bad))
+        good = os.path.join(d, "good.py")
+        r2 = f.write_file(good, "x = 1\n")
+        self.assertIn("Write ho gayi", r2)
+
+    def test_project_context(self):
+        from kaal.skills.project import project_context
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(project_context(d), "")
+            with open(os.path.join(d, "AGENTS.md"), "w") as fh:
+                fh.write("# Rules\n- Hindi me jawab\n")
+            ctx = project_context(d)
+            self.assertIn("AGENTS.md", ctx)
+            self.assertIn("Hindi", ctx)
+
+    def test_effort_mapping(self):
+        from kaal.models import router as rt
+        self.assertEqual(rt.EFFORTS["low"], (0.2, 200))
+        self.assertEqual(rt.EFFORTS["medium"], (0.7, 500))
+        self.assertEqual(rt.EFFORTS["high"], (1.0, 1000))
+        self.assertIn(rt.get_effort(), rt.EFFORTS)
+        self.assertIn("low", rt.set_effort("low"))
+        self.assertEqual(rt.get_effort(), "low")
+        self.assertIn("medium", rt.set_effort("medium"))
+        self.assertIn("galat", rt.set_effort("ultra"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,7 @@ from ..models.ollama import PRESETS as OLLAMA_PRESETS, pull as ollama_pull, dete
 from ..models.router import add_user_key, budget_status, list_endpoints
 from ..models.router import POPULAR_MODELS, get_model, set_model
 from ..models.router import get_role_model, set_role_model
+from ..models.router import get_effort, set_effort
 from ..platform_adapt import describe as plat_describe
 from ..scheduler import add as sched_add, due as sched_due
 from ..storage import startup_check
@@ -404,8 +405,8 @@ def main_loop():
                     pass
                 console.print("[green]Thread clear — nayi shuruaat.[/]")
                 continue
-            th = thread_context()
-            console.print(Panel(th or "[dim]Thread khaali.[/]", title=" Thread",
+            th_ctx = thread_context()
+            console.print(Panel(th_ctx or "[dim]Thread khaali.[/]", title=" Thread",
                                 border_style=th.ACCENT, padding=(0, 1)))
             continue
         if task.startswith("/plan"):
@@ -491,6 +492,91 @@ def main_loop():
             name = parts[1].strip()
             pick = POPULAR_MODELS[int(name) - 1] if name.isdigit() and 1 <= int(name) <= len(POPULAR_MODELS) else name
             console.print(f"[green]{set_model(pick)}[/]")
+            continue
+        if task == "/keys":
+            parts = task.split()
+            if len(parts) >= 3 and parts[1] == "add":
+                provider = parts[2].strip()
+                key = parts[3].strip() if len(parts) > 3 else ""
+                result = add_user_key(provider, key)
+                console.print(f"[green]{result}[/]")
+                continue
+            if len(parts) >= 2 and parts[1] == "list":
+                console.print("[dim]No API keys configured yet. Use: /keys add <provider> <key>[/]")
+                console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai[/]")
+                continue
+            console.print("[dim]Usage: /keys add <provider> <key> | /keys list[/]")
+            continue
+        if task.startswith("/effort"):
+            parts = task.split()
+            if len(parts) < 2:
+                console.print(f"[dim]Effort: {get_effort()} (low|medium|high)[/]")
+                console.print("[dim]Use: /effort low|medium|high — reasoning depth (temperature + max_tokens)[/]")
+                continue
+            console.print(f"[green]{set_effort(parts[1])}[/]")
+            continue
+        if task == "/tree":
+            from ..trace import recent as _tr_all
+            rows = _tr_all(30)
+            if not rows:
+                console.print("[dim]Koi trace nahi — pehla task chalao.[/]")
+                continue
+            runs = {}
+            for e in rows:
+                runs.setdefault(str(e.get("run", "?")), []).append(e)
+            for rid, evs in runs.items():
+                console.print(f"[bold {th.ACCENT}]run {rid}[/]")
+                for e in evs:
+                    if e.get("kind") == "observation":
+                        console.print(f"  ├─ [dim]{e.get('tool', '?')}[/] {str(e.get('args', ''))[:50]} → {str(e.get('result', ''))[:60]}")
+                    else:
+                        st = "[green]done[/]" if e.get("status") == "done" else f"[yellow]{e.get('status', '?')}[/]"
+                        console.print(f"  └─ {str(e.get('task', ''))[:50]} [{e.get('mode', '')}/{e.get('endpoint', '')}] {st}")
+            continue
+        if task.startswith("/review"):
+            from ..skills import files as _rf
+            parts = task.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                console.print("[dim]Use: /review <file> — outline + syntax + checklist review[/]")
+                continue
+            fp = parts[1].strip()
+            out = _rf.read_file(fp, max_chars=1500)
+            ol = _rf.outline(fp)
+            chk = ["syntax (py_compile)", "error handling", "permission-gated ops",
+                   "secrets exposure", "edge cases (empty/large input)"]
+            try:
+                import py_compile, tempfile, os as _os
+                _tmp = None
+                _real = _rf._safe(fp)
+                if _real and _real.endswith(".py"):
+                    py_compile.compile(_real, doraise=True)
+                    chk[0] += " OK"
+                else:
+                    chk[0] += " n/a (py nahi)"
+            except Exception as e:
+                chk[0] += f" FAIL: {e}"[:100]
+            console.print(Panel(f"{out[:800]}\n---\n{ol[:800]}",
+                                title=f" Review: {fp}", border_style=th.ACCENT, padding=(0, 1)))
+            for c in chk:
+                mark = "[green]✓[/]" if c.endswith("OK") else ("[red]✗[/]" if "FAIL" in c else "[yellow]•[/]")
+                console.print(f"  {mark} {c}")
+            try:
+                from ..models.router import try_chat as _tc
+                _, txt = _tc([
+                    {"role": "system", "content": "Tum code reviewer ho. 3 line me kami/khatra batao (Hindi)."},
+                    {"role": "user", "content": f"FILE: {fp}\n{out[:1000]}"}])
+                if txt:
+                    console.print(f"[bold]Reviewer:[/] {txt[:300]}")
+            except Exception:
+                pass
+            continue
+        if task.startswith("/research"):
+            parts = task.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                console.print("[dim]Use: /research <query> — explorer role se read-only codebase research[/]")
+                continue
+            res = _run_with_live(f"explore karo: {parts[1].strip()}")
+            show_result(res)
             continue
         res = _run_with_live(task)
         show_result(res)

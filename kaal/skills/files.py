@@ -278,6 +278,12 @@ def write_file(path, content, ask_cb=None):
     p = _safe(path)
     if not p:
         return "Unsafe path — write block"
+    if p.endswith(".py"):
+        import ast
+        try:
+            ast.parse(content[:100000])
+        except SyntaxError as e:
+            return f"Syntax toot jayegi — write roki: {e}"
     os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
     _backup(p)
     _touch(p)

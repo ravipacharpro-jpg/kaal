@@ -22,21 +22,26 @@ def status_line():
     ms = ", ".join(models) if models else "koi model load nahi"
     return f"Ollama: chal raha  models: {ms}"
 
-def chat(messages, timeout=60, usage_cb=None):
+def chat(messages, timeout=60, usage_cb=None, temperature=None, num_predict=500):
     """Keyless local LLM call. Returns (ok, text). Ollama band to (False, reason)."""
-    ok, text = chat_stream(messages, timeout=timeout, usage_cb=usage_cb)
+    ok, text = chat_stream(messages, timeout=timeout, usage_cb=usage_cb,
+                           temperature=temperature, num_predict=num_predict)
     return ok, text
 
-def chat_stream(messages, on_token=None, timeout=120, usage_cb=None):
+def chat_stream(messages, on_token=None, timeout=120, usage_cb=None,
+                temperature=None, num_predict=500):
     """Streaming chat. on_token(piece) per chunk. Real eval counts usage_cb ko.
     Returns (ok, full_or_err)."""
     ok, models = detect()
     if not ok:
         return False, "ollama-off"
     model = models[0] if models else "llama3.2"
+    opts = {"num_predict": num_predict}
+    if temperature is not None:
+        opts["temperature"] = temperature
     body = json.dumps({"model": model, "messages": messages,
                        "stream": True,
-                       "options": {"num_predict": 500}}).encode()
+                       "options": opts}).encode()
     for base in URLS:
         try:
             req = urllib.request.Request(base + "/api/chat", data=body,

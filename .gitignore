@@ -5,8 +5,13 @@ __pycache__/
 *.faiss
 logs/
 memory/*.json
+memory/USER.md
+memory/MEMORY.md
+memory/thread.json
+memory/patterns.json
 memory/backups/
 memory/.test-tmp*
+recipes/*.md
 benchmarks/work/
 benchmarks/results.json
 config/vault.json

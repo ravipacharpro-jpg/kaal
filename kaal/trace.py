@@ -4,7 +4,7 @@ TUI /trace se recent dekho.
 """
 import json, os, time
 
-PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..",
+PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
                                     "logs", "trace.jsonl"))
 
 def log(entry):

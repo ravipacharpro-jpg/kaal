@@ -1,2 +1,2 @@
-{"delete_files": "ask", "browser": "ask", "code_execution": "ask", "api_calls": "approved",
- "note": "ask = har baar puchega, allow = bina puche, deny = hamesha block"}
+{"delete_files": "ask", "browser": "ask", "code_execution": "ask", "secrets": "ask", "api_calls": "approved",
+  "note": "ask = har baar puchega, allow = bina puche, deny = hamesha block"}

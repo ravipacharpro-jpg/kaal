@@ -4,7 +4,6 @@ No code dump yahan — sirf selection summary return hota hai.
 """
 import os, json, datetime
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "config")
 CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config"))
 VAULT = os.path.join(CONFIG_DIR, "vault.json")
 USAGE = os.path.join(CONFIG_DIR, "endpoint_usage.json")
@@ -187,6 +186,30 @@ def set_model(name):
         json.dump({"default_model": name}, f, indent=2)
     return f"Model set: {name}"
 
+EFFORTS = {"low": (0.2, 200), "medium": (0.7, 500), "high": (1.0, 1000)}
+
+def get_effort():
+    """Reasoning effort: low|medium|high. Default medium."""
+    d = _load_json(MODEL_FILE, {})
+    e = str(d.get("effort", "medium")).lower()
+    return e if e in EFFORTS else "medium"
+
+def set_effort(name):
+    name = str(name or "").lower()
+    if name not in EFFORTS:
+        return f"Effort galat — use: {', '.join(EFFORTS)}"
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    d = _load_json(MODEL_FILE, {})
+    d["effort"] = name
+    with open(MODEL_FILE, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=2)
+    t, n = EFFORTS[name]
+    return f"Effort set: {name} (temperature {t}, max_tokens {n})"
+
+def _effort_params():
+    t, n = EFFORTS[get_effort()]
+    return {"temperature": t, "max_tokens": n, "num_predict": n}
+
 def _model_for(prov):
     m = get_model()
     return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
@@ -198,7 +221,9 @@ def try_chat(messages, max_tokens_note=200, model=None):
     from . import ollama as _ol
     got0 = []
     try:
-        ok, txt = _ol.chat(messages, usage_cb=lambda n: got0.append(n))
+        ep = _effort_params()
+        ok, txt = _ol.chat(messages, usage_cb=lambda n: got0.append(n),
+                           temperature=ep["temperature"], num_predict=ep["num_predict"])
         if ok:
             track_usage("ollama_local", got0[0] if got0 else max_tokens_note)
             return "ollama_local", txt
@@ -221,7 +246,9 @@ def try_chat(messages, max_tokens_note=200, model=None):
             if _cool(str(key)) > _t.time():
                 continue  # rate-limit cooldown me hai — next key
             got1 = []
-            ok, txt = chat(url, key, m, messages, usage_cb=lambda n: got1.append(n))
+            ep1 = _effort_params()
+            ok, txt = chat(url, key, m, messages, usage_cb=lambda n: got1.append(n),
+                           temperature=ep1["temperature"], max_tokens=ep1["max_tokens"])
             if ok:
                 track_usage(f"{prov}/key", got1[0] if got1 else max_tokens_note)
                 return f"{prov}", txt
@@ -235,8 +262,11 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
     from . import ollama as _ol
     got = []
     try:
+        ep = _effort_params()
         ok, txt = _ol.chat_stream(messages, on_token=on_token,
-                                   usage_cb=lambda n: got.append(n))
+                                   usage_cb=lambda n: got.append(n),
+                                   temperature=ep["temperature"],
+                                   num_predict=ep["num_predict"])
         if ok:
             track_usage("ollama_local", got[0] if got else max_tokens_note)
             return "ollama_local", txt
@@ -259,8 +289,11 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
             if _cool(str(key)) > _t.time():
                 continue
             got2 = []
+            ep2 = _effort_params()
             ok, txt = chat_stream(url, key, m, messages, on_token=on_token,
-                                  usage_cb=lambda n: got2.append(n))
+                                  usage_cb=lambda n: got2.append(n),
+                                  temperature=ep2["temperature"],
+                                  max_tokens=ep2["max_tokens"])
             if ok:
                 track_usage(f"{prov}/key", got2[0] if got2 else max_tokens_note)
                 return f"{prov}", txt
@@ -314,9 +347,11 @@ def try_llm(prompt, max_tokens_note=100):
             if _cool(str(key)) > _t.time():
                 continue
             got3 = []
+            ep3 = _effort_params()
             ok, txt = chat(url, key, _model_for(prov),
                            [{"role": "user", "content": prompt[:1500]}],
-                           usage_cb=lambda n: got3.append(n))
+                           usage_cb=lambda n: got3.append(n),
+                           temperature=ep3["temperature"], max_tokens=ep3["max_tokens"])
             if ok:
                 track_usage(f"{prov}/key", got3[0] if got3 else max_tokens_note)
                 return f"{prov}", txt
@@ -368,4 +403,8 @@ def add_user_key(provider, key):
     vault.setdefault("providers", {}).setdefault(provider, []).append({"key": key})
     with open(VAULT, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2)
+    try:
+        os.chmod(VAULT, 0o600)  # keys plaintext hain — kam se kam owner-only
+    except OSError:
+        pass
     return f"{provider} key add ho gayi ({len(vault['providers'][provider])} total)"

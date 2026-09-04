@@ -3,7 +3,7 @@ memory/*.db, logs/*, /tmp kaal* — age + size rules. Config: storage.json ya de
 """
 import os, time, glob
 
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def du_mb(path):
     total = 0

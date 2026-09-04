@@ -178,7 +178,7 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     except Exception:
         pass
     op = needs_permission(task)
-    if op and not _cfg.check_perm(op if op != "secrets" else "delete_files",
+    if op and not _cfg.check_perm(op,
                                   ask_cb, f"Sensitive lag raha hai ({op}): {task[:70]} — aage badhu?"):
         _log("single", ep["name"], todos, "denied")
         return {"status": "denied", "summary": "User ne permission deny ki",

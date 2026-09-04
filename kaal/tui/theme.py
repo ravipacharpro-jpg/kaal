@@ -13,5 +13,5 @@ NAME = "kaal"
 VERSION = "v0.1.0"
 TAGLINE = "autonomous agent · ahead of time"
 
-FOOTER_HINT = ("[dim]/endpoints /budget /memory /user /thread /trace /agents /key /model /ollama /schedule "
-               "/perm /plan /approve /recipe /plugin /voice /checkpoint /rewind /export /quit [dim]· seedha task likho[/]")
+FOOTER_HINT = ("[dim]/endpoints /budget /memory /user /thread /trace /tree /agents /key /model /effort /ollama /schedule "
+               "/perm /plan /approve /review /research /recipe /plugin /voice /checkpoint /rewind /export /quit [dim]· seedha task likho[/]")

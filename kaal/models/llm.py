@@ -6,13 +6,14 @@ import json, urllib.request
 
 TIMEOUT = 25
 
-def chat(endpoint_url, api_key, model, messages, timeout=TIMEOUT, usage_cb=None):
+def chat(endpoint_url, api_key, model, messages, timeout=TIMEOUT, usage_cb=None,
+         temperature=0.7, max_tokens=500):
     """Returns (ok, text). Real usage.total_tokens usage_cb ko (fake counting khatm)."""
     if not api_key:
         return False, "no-key"
     url = endpoint_url.rstrip("/") + "/chat/completions"
     body = json.dumps({"model": model, "messages": messages[:10],
-                       "max_tokens": 500, "temperature": 0.7}).encode()
+                       "max_tokens": max_tokens, "temperature": temperature}).encode()
     req = urllib.request.Request(url, data=body,
         headers={"Content-Type": "application/json",
                  "Authorization": f"Bearer {api_key}"})
@@ -66,14 +67,14 @@ def _classify_err(e):
     return s
 
 def chat_stream(endpoint_url, api_key, model, messages, on_chunk=None, timeout=60,
-                usage_cb=None):
+                usage_cb=None, temperature=0.7, max_tokens=500):
     """SSE streaming. on_chunk(piece) per token. Real usage via stream_options.
     Returns (ok, full_text_or_err)."""
     if not api_key:
         return False, "no-key"
     url = endpoint_url.rstrip("/") + "/chat/completions"
     body = json.dumps({"model": model, "messages": messages[:10],
-                       "max_tokens": 500, "temperature": 0.7,
+                       "max_tokens": max_tokens, "temperature": temperature,
                        "stream": True,
                        "stream_options": {"include_usage": True}}).encode()
     req = urllib.request.Request(url, data=body,

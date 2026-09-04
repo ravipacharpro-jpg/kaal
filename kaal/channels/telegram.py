@@ -12,7 +12,7 @@ API = "https://api.telegram.org/bot"
 
 def _load():
     import os
-    p = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "config", "telegram.json"))
+    p = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config", "telegram.json"))
     try:
         with open(p, encoding="utf-8") as f:
             d = json.load(f)

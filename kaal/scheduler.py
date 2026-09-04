@@ -3,7 +3,7 @@ Cron alternative: Termux me `termux-job-scheduler` ya simple loop se.
 """
 import os, json, time
 
-JOBS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config", "jobs.json"))
+JOBS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "config", "jobs.json"))
 
 def _load():
     try:

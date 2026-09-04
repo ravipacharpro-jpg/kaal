@@ -70,6 +70,13 @@ def _context(task):
             parts.append(th)
     except Exception:
         pass
+    try:
+        from ..skills.project import project_context as _pctx
+        pc = _pctx()
+        if pc:
+            parts.append(pc)
+    except Exception:
+        pass
     return ("\n\n" + "\n\n".join(parts)) if parts else ""
 
 def _parse_json(txt):

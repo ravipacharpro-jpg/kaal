@@ -6,7 +6,7 @@
 """
 import os, re
 
-DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "recipes"))
+DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "recipes"))
 
 BUILTIN = {
     "morning-review.md": ("# name: morning-review\n# steps:\n"
