@@ -2,7 +2,7 @@
 No circular imports. Uses Rich colour names as strings.
 """
 NAME = "kaal"
-VERSION = "v0.1.0"
+VERSION = "v0.6.0"
 TAGLINE = "autonomous agent · ahead of time"
 
 

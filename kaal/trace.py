@@ -7,12 +7,31 @@ import json, os, time
 PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
                                     "logs", "trace.jsonl"))
 
+MAX_BYTES = 512 * 1024  # 512KB cap — unattended 24/7 me disk-fill guard
+KEEP_TAIL = 200  # rotate pe akhri N lines rakho
+
+def _rotate():
+    """Cap cross to purani lines hatao (atomic replace). Fail-soft."""
+    try:
+        if not os.path.isfile(PATH) or os.path.getsize(PATH) <= MAX_BYTES:
+            return
+        with open(PATH, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        tail = lines[-KEEP_TAIL:]
+        tmp = PATH + ".rot"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.writelines(tail)
+        os.replace(tmp, PATH)
+    except Exception:
+        pass
+
 def log(entry):
     try:
         os.makedirs(os.path.dirname(PATH), exist_ok=True)
         entry["ts"] = time.time()
         with open(PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry)[:2000] + "\n")
+        _rotate()
     except Exception:
         pass
 

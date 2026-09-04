@@ -10,7 +10,7 @@ BRIGHT = "bright_white"
 MAGENTA = "magenta"
 
 NAME = "kaal"
-VERSION = "v0.1.0"
+VERSION = "v0.6.0"
 TAGLINE = "autonomous agent · ahead of time"
 
 FOOTER_HINT = ("[dim]/endpoints /budget /memory /user /thread /trace /tree /agents /key /model /effort /ollama /schedule "

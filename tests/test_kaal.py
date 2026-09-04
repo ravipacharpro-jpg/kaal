@@ -763,5 +763,52 @@ class TestWishlistBatch4(unittest.TestCase):
         self.assertEqual(r2["status"], "FAIL")
 
 
+class TestMaintenanceBatch(unittest.TestCase):
+    """prompt.cpp maintenance gaps: undo race, trace rotation."""
+
+    def test_backup_no_collision_rapid(self):
+        """20 rapid backups → 20 unique paths (overwrite race nahi).
+        Stack cap 5 hai, isliye akhri 5 files disk pe, contents sahi order me."""
+        from kaal.skills import files as f
+        import shutil
+        shutil.rmtree("memory/backups", ignore_errors=True)
+        d = os.path.abspath("memory/.test-tmp7")
+        os.makedirs(d, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        p = os.path.join(d, "c.txt")
+        paths = []
+        for i in range(20):
+            with open(p, "w") as fh:
+                fh.write(f"v{i}")
+            bp = f._backup(p)
+            self.assertTrue(bp)
+            paths.append(bp)
+        self.assertEqual(len(set(paths)), 20)  # koi overwrite nahi
+        for bp, i in zip(paths[-5:], range(15, 20)):
+            with open(bp, "rb") as fh:
+                self.assertEqual(fh.read().decode(), f"v{i}")
+
+    def test_trace_rotation(self):
+        from kaal import trace as tr
+        orig_max, orig_keep = tr.MAX_BYTES, tr.KEEP_TAIL
+        tr.MAX_BYTES, tr.KEEP_TAIL = 8 * 1024, 10  # test ke liye chhota cap
+        try:
+            big = "x" * 900
+            for _ in range(60):
+                tr.log({"task": big, "mode": "t", "endpoint": "e", "status": "done",
+                        "steps": 1, "tools": [], "secs": 0.1, "level": None, "run_id": "r"})
+            import os as _os
+            sz = _os.path.getsize(tr.PATH)
+            self.assertLessEqual(sz, 20 * 1024)
+            self.assertTrue(tr.recent(5))  # tail readable hai
+        finally:
+            tr.MAX_BYTES, tr.KEEP_TAIL = orig_max, orig_keep
+            try:
+                import os as _os2
+                _os2.remove(tr.PATH)
+            except OSError:
+                pass
+
+
 if __name__ == "__main__":
     unittest.main()

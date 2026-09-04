@@ -68,5 +68,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.1.1-dev — security batch in. Tests 51 pass + benchmark 12/12 (hermetic).
+v0.6.0 — maintenance batch in. Tests 70 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.

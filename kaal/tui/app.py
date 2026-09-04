@@ -160,6 +160,20 @@ def _run_with_live(task):
         console.print(f"[dim] Cost estimate: {estimate(task)}[/]")
     except Exception:
         pass
+    try:
+        from ..agents.orchestrator import decompose
+        jobs = decompose(task)
+        if len(jobs) > 1:
+            t = Table(show_header=False, border_style="dim", box=None)
+            t.add_column(" ", style="dim")
+            t.add_column("Step", style="bold")
+            t.add_column("Agent", style="dim")
+            for j in jobs:
+                t.add_row("○", j["step"][:50], j["agent"])
+            console.print(Panel(t, title=" Plan (live states neeche summary me)",
+                                border_style="dim", padding=(0, 1)))
+    except Exception:
+        pass
     live = {"msg": "soch raha hu..."}
     with Progress(SpinnerColumn(style=th.ACCENT),
                    TextColumn(" {task.fields[live]}"),
@@ -324,7 +338,7 @@ def main_loop():
                 console.print(Panel(t, title=" Permissions",
                                     border_style=th.ACCENT, padding=(0, 1)))
                 console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
-            console.print("[dim]Scoped: /perm delete_files:/tmp allow (longest-prefix match)[/]")
+                console.print("[dim]Scoped: /perm delete_files:/tmp allow (longest-prefix match)[/]")
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue
@@ -621,12 +635,20 @@ def main_loop():
                 continue
             for t in picks:
                 console.print(f"[bold]Autopilot:[/] {t[:70]}")
-                res = _run_with_live(t)
+                try:
+                    res = _run_with_live(t)
+                except KeyboardInterrupt:
+                    console.print("\n[yellow]Task roka (Ctrl+C) — partial state memory/backups me safe.[/]")
+                    break
                 show_result(res)
                 _done(t)
                 if res.get("status") == "denied":
                     console.print("[yellow]Permission deny — autopilot roka.[/]")
                     break
             continue
-        res = _run_with_live(task)
+        try:
+            res = _run_with_live(task)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Task roka (Ctrl+C) — partial state memory/backups me safe.[/]")
+            continue
         show_result(res)

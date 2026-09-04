@@ -136,7 +136,7 @@ def checkpoint(tag="auto"):
             json.dump(idx, f)
     except Exception:
         pass
-    cid = f"{int(time.time()*1000)}-{tag}"
+    cid = f"{_unique_stamp(tag)}"
     with open(os.path.join(_cp_dir(), cid + ".json"), "w", encoding="utf-8") as f:
         json.dump(idx, f)
     allc = sorted((os.path.join(_cp_dir(), f) for f in os.listdir(_cp_dir()) if f.endswith(".json")),
@@ -175,7 +175,7 @@ def rewind():
             cur = json.load(f)
     except Exception:
         cur = {}
-    with open(os.path.join(_cp_dir(), f"{int(time.time()*1000)}-pre-rewind.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(_cp_dir(), f"{_unique_stamp('pre-rewind')}.json"), "w", encoding="utf-8") as f:
         json.dump(cur, f)
     with open(latest, encoding="utf-8") as f:
         idx = json.load(f)
@@ -192,17 +192,26 @@ def _norm_stack(v):
         return [b for b in v if isinstance(b, str)]
     return [v] if isinstance(v, str) and v else []
 
+import itertools as _it
+_stamp = _it.count()
+
+def _unique_stamp(tag=""):
+    """Monotonic unique stamp — same-ms/nanosecond collision impossible (in-process).
+    Rapid successive backups pehle same filename overwrite kar dete the (data-loss race)."""
+    import os as _os
+    return f"{time.time_ns()}-{next(_stamp)}-{_os.getpid()}" + (f"-{tag}" if tag else "")
+
 def _snapshot(p):
     """Bina index chhue sirf backup file banao (checkpoint ke liye)."""
     try:
         if not os.path.isfile(p):
             return ""
         os.makedirs(BACKUP_DIR, exist_ok=True)
-        bp = os.path.join(BACKUP_DIR, os.path.basename(p) + f".{int(time.time()*1000)}.bak")
-        with open(p, "rb") as f, open(bp, "wb") as b:
+        bp = os.path.join(BACKUP_DIR, os.path.basename(p) + f".{_unique_stamp()}.bak")
+        with open(p, "rb") as f, open(bp, "xb") as b:
             b.write(f.read(2000000))
         return bp
-    except OSError:
+    except (OSError, FileExistsError):
         return ""
 
 def _backup(p):
@@ -212,8 +221,8 @@ def _backup(p):
         if not os.path.isfile(p):
             return ""
         os.makedirs(BACKUP_DIR, exist_ok=True)
-        bp = os.path.join(BACKUP_DIR, os.path.basename(p) + f".{int(time.time()*1000)}.bak")
-        with open(p, "rb") as f, open(bp, "wb") as b:
+        bp = os.path.join(BACKUP_DIR, os.path.basename(p) + f".{_unique_stamp()}.bak")
+        with open(p, "rb") as f, open(bp, "xb") as b:
             b.write(f.read(2000000))
         try:
             with open(_index_path(), encoding="utf-8") as f:
