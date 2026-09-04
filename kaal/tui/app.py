@@ -324,6 +324,7 @@ def main_loop():
                 console.print(Panel(t, title=" Permissions",
                                     border_style=th.ACCENT, padding=(0, 1)))
                 console.print("[dim]Use: /perm delete_files allow|ask|deny[/]")
+            console.print("[dim]Scoped: /perm delete_files:/tmp allow (longest-prefix match)[/]")
                 continue
             console.print(f"[green]{cfg_set_perm(parts[1], parts[2])}[/]")
             continue

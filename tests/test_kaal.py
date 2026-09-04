@@ -654,5 +654,114 @@ class TestWishlistBatch3(unittest.TestCase):
         self.assertEqual(repl.vars_list(), [])
 
 
+class TestWishlistBatch4(unittest.TestCase):
+    """RPC bridge, scoped perms, LSP fake-server, SWE harness."""
+
+    def test_rpc_handle(self):
+        from kaal import rpc
+        r = rpc.handle({"id": 1, "method": "initialize"})
+        self.assertEqual(r["result"]["agent"], "kaal")
+        self.assertIn("prompt/run", r["result"]["methods"])
+        self.assertIn("unknown-method", rpc.handle({"id": 2, "method": "nope"})["error"])
+        self.assertIn("empty-task", rpc.handle({"id": 3, "method": "prompt/run",
+                                                 "params": {"task": ""}})["error"])
+        orig = rpc._run_task
+        rpc._run_task = lambda t: {"status": "done", "summary": "mocked " + t}
+        try:
+            r2 = rpc.handle({"id": 4, "method": "prompt/run", "params": {"task": "hi"}})
+            self.assertEqual(r2["result"]["summary"], "mocked hi")
+        finally:
+            rpc._run_task = orig
+
+    def test_scoped_perm_prefix(self):
+        import json
+        from kaal import config_store as cs
+        p = os.path.join("config", "permissions.json")
+        had = None
+        if os.path.isfile(p):
+            with open(p, encoding="utf-8") as f:
+                had = f.read()
+        try:
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump({"delete_files": "ask", "delete_files:/tmp": "allow",
+                           "delete_files:/tmp/secret": "deny"}, f)
+            self.assertEqual(cs.get_perm("delete_files:/tmp/x"), "allow")
+            self.assertEqual(cs.get_perm("delete_files:/tmp/secret/y"), "deny")
+            self.assertEqual(cs.get_perm("delete_files:/other"), "ask")
+        finally:
+            if had is None:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            else:
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write(had)
+
+    def test_lsp_fake_server(self):
+        import shutil, subprocess, sys
+        if os.name == "nt":
+            self.skipTest("select() pipes Windows pe nahi")
+        from kaal.skills import lsp
+        srv = os.path.abspath("memory/.test-tmp-lsp.py")
+        os.makedirs(os.path.dirname(srv), exist_ok=True)
+        self.addCleanup(lambda: os.path.exists(srv) and os.remove(srv))
+        with open(srv, "w", encoding="utf-8") as f:
+            f.write(
+                "import sys, json\n"
+                "def rd():\n"
+                " h=b''\n"
+                " while not h.endswith(b'\\r\\n\\r\\n'):\n"
+                "  c=sys.stdin.buffer.read(1)\n"
+                "  if not c: return None\n"
+                "  h+=c\n"
+                " n=int([l for l in h.decode().splitlines() if 'ength' in l][0].split(':')[1])\n"
+                " return json.loads(sys.stdin.buffer.read(n).decode() or 'null')\n"
+                "def wr(m):\n"
+                " b=json.dumps(m).encode()\n"
+                " sys.stdout.buffer.write(b'Content-Length: %d\\r\\n\\r\\n' % len(b) + b)\n"
+                " sys.stdout.buffer.flush()\n"
+                "nid=0\n"
+                "while True:\n"
+                " m=rd()\n"
+                " if m is None: break\n"
+                " if m.get('method')=='exit': break\n"
+                " if 'id' in m and m.get('method')=='initialize':\n"
+                "  wr({'jsonrpc':'2.0','id':m['id'],'result':{'capabilities':{}}})\n"
+                " elif 'id' in m and m.get('method')=='shutdown':\n"
+                "  wr({'jsonrpc':'2.0','id':m['id'],'result':None})\n"
+                " elif m.get('method')=='textDocument/didOpen':\n"
+                "  u=(m.get('params') or {}).get('textDocument',{}).get('uri','')\n"
+                "  wr({'jsonrpc':'2.0','method':'textDocument/publishDiagnostics','params':{'uri':u,'diagnostics':[{'range':{'start':{'line':0}},'message':'fake-warn'}]}})\n")
+        with open(os.path.abspath("memory/.test-tmp-t.py"), "w") as f:
+            f.write("x = 1\n")
+        self.addCleanup(lambda: os.path.exists(os.path.abspath("memory/.test-tmp-t.py")) and os.remove(os.path.abspath("memory/.test-tmp-t.py")))
+        out = lsp.diagnose("memory/.test-tmp-t.py", server_cmd=f"{sys.executable} {srv}",
+                           root=".", timeout=15)
+        self.assertIn("fake-warn", out)
+        self.assertIn("n/a", lsp.diagnose("memory/.test-tmp-t.py", server_cmd="no-such-lsp-xyz"))
+
+    def test_swe_harness(self):
+        import shutil, subprocess, tempfile
+        if shutil.which("git") is None:
+            self.skipTest("git nahi mili")
+        d = tempfile.mkdtemp(prefix="kaal-swe-test-")
+        self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+        def g(*a):
+            return subprocess.run(["git", "-C", d] + list(a), capture_output=True, text=True)
+        g("init"); g("config", "user.email", "t@t.t"); g("config", "user.name", "t")
+        with open(os.path.join(d, "t.py"), "w") as f:
+            f.write("def test_ok():\n assert 1 == 1\n")
+        g("add", "-A"); g("commit", "-m", "init")
+        from benchmarks.swe_run import run_instance
+        r = run_instance(d, "HEAD", "python3 -m pytest -q t.py", timeout=120)
+        self.assertEqual(r["status"], "PASS")
+        with open(os.path.join(d, "t.py"), "w") as f:
+            f.write("def test_ok():\n assert 1 == 2\n")
+        g("add", "-A"); g("commit", "-m", "break")
+        r2 = run_instance(d, "HEAD", "python3 -m pytest -q t.py", timeout=120)
+        self.assertEqual(r2["status"], "FAIL")
+
+
 if __name__ == "__main__":
     unittest.main()

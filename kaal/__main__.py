@@ -51,6 +51,14 @@ def main():
         for line in run_due(lambda t, level: run_task(t, ask_cb=lambda q: False, level=level)["summary"][:150], lv):
             console.print(line)
         return
+    if args and args[0] == "--mode" and len(args) > 1 and args[1] == "rpc":
+        from . import rpc as _rpc
+        _rpc.serve_stdio()
+        return
+    if args and args[0] == "--mode" and len(args) > 1 and args[1] == "json":
+        from . import rpc as _rpc
+        _rpc.run_json(" ".join(args[2:]) or "ping")
+        return
     if args and args[0] == "--heartbeat":
         # One-shot due-run — cron / Termux:JobScheduler se chalao (daemon nahi chahiye)
         from .scheduler import run_due

@@ -64,7 +64,9 @@ def _dispatch(step, live_cb, ask_cb, level=None, run_id=None):
             if not ok:
                 _observe("file_delete", step, note)
                 return note
-        if not _cfg.check_perm("delete_files", ask_cb, f"Delete karu: {step.split()[-1]}?"):
+        _target = step.split()[-1]
+        if not _cfg.check_perm(f"delete_files:{_target}",
+                               ask_cb, f"Delete karu: {_target}?"):
             _observe("file_delete", step, "denied")
             return "Delete cancel — permission deny"
         res = _files.delete_path(step.split()[-1], lambda q: True)

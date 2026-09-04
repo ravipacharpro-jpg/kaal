@@ -1,0 +1,23 @@
+{
+  "name": "kaal-agent",
+  "displayName": "Kaal Agent",
+  "description": "Kaal autonomous agent — talks to `kaal --mode rpc` over stdio.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "kaal",
+  "engines": { "vscode": "^1.85.0" },
+  "activationEvents": ["onCommand:kaal.runTask"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "kaal.runTask", "title": "Kaal: Run Task" },
+      { "command": "kaal.reviewFile", "title": "Kaal: Review Active File" }
+    ],
+    "configuration": {
+      "title": "Kaal",
+      "properties": {
+        "kaal.bin": { "type": "string", "default": "kaal", "description": "Kaal binary (PATH me ho ya full path)." }
+      }
+    }
+  }
+}
