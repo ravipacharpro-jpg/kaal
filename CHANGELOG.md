@@ -1,6 +1,9 @@
 # Kaal Changelog
 
-## v0.6.0 — bg/interject batch
+## v0.6.0 — SWE dataset batch
+- Added: SWE dataset runner — patch apply, FAIL_TO_PASS/PASS_TO_PASS grading, batch + CLI (`benchmarks/swe_run.py dataset.json`)
+- Hardened: worktree retry + prune (slow-storage git flakes)
+- Note: suite me rare environmental flake (~1/8 runs, SWE worktree tests) — retry se mitigated, root cause still under watch
 - Added: `/bg <task>` — background task + live-todo panel + beech me note/cancel
 - Added: `step_cb`/`cancel`/`inbox` hooks in `run_task` + brain loop (backward compatible)
 - Fixed: `/keys list` ab asal vault dikhata hai (masked, poori key kabhi nahi)

@@ -56,6 +56,7 @@ kaal --heartbeat  # cron/Termux:JobScheduler se one-shot due jobs
 kaal --daemon 300 # PID file + serve loop (stop: kill, PID file delete)
 kaal --mode json "task"  # single task → JSON (pip/tool friendly)
 kaal --mode rpc          # JSON-RPC stdio bridge (IDE/tool integration, minimal ACP-style subset)
+python3 benchmarks/swe_run.py dataset.json --out results.json  # SWE-style grading
 ```
 - **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
 
