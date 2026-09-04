@@ -1,5 +1,11 @@
 # Kaal Changelog
 
+## v0.6.0 — bg/interject batch
+- Added: `/bg <task>` — background task + live-todo panel + beech me note/cancel
+- Added: `step_cb`/`cancel`/`inbox` hooks in `run_task` + brain loop (backward compatible)
+- Fixed: `/keys list` ab asal vault dikhata hai (masked, poori key kabhi nahi)
+- Ctrl+C graceful everywhere (partial state safe)
+
 ## v0.6.0 — maintenance batch
 - Fixed: undo/checkpoint timestamp-collision race (monotonic unique stamps + exclusive create)
 - Added: trace.jsonl rotation (512KB cap, tail-200 keep)

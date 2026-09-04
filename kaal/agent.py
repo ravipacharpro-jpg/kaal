@@ -105,9 +105,11 @@ def _dispatch(step, live_cb, ask_cb, level=None, run_id=None):
     _observe("generic", step, "done"); return f" {step[:80]}"
 
 def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
-             ask_text_cb=None, level=None):
+             ask_text_cb=None, level=None, step_cb=None, cancel=None, inbox=None):
     """Ek task chalao. Vault key ho to LLM BRAIN, nahi to legacy rule path.
     live_cb = 1-line Hindi update, on_token = streaming, ask_text_cb = clarification.
+    step_cb(title, status) = live-todo hook (/bg). cancel = threading.Event.
+    inbox = queue.Queue — legacy path me beech ke notes output me judte hain.
     Code dump nahi."""
     import time as _t
     _t0 = _t.time()
@@ -144,7 +146,8 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
             jobs = decompose(task, smart=True)
             todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs,
                                                  on_token=on_token,
-                                                 ask_text_cb=ask_text_cb, level=level)
+                                                 ask_text_cb=ask_text_cb, level=level,
+                                                 step_cb=step_cb, cancel=cancel, inbox=inbox)
             if summary:  # brain ne complete kiya
                 review_note = _self_review(task, summary)
                 if review_note:
@@ -195,13 +198,26 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     out = []
 
     def _one(td):
+        if cancel is not None and cancel.is_set():
+            td["status"] = "pending"
+            return "cancelled", True
         td["status"] = "doing"
+        if step_cb:
+            try:
+                step_cb(td["title"][:50], "doing")
+            except Exception:
+                pass
         res = _dispatch(td["title"], None, ask_cb, level, _run_id)
         if res == "Delete cancel — permission deny":
             td["status"] = "pending"
             return " delete cancel", True
         td["status"] = "done"
         td["result"] = res[:200]
+        if step_cb:
+            try:
+                step_cb(td["title"][:50], "done")
+            except Exception:
+                pass
         return f" [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}", False
 
     risky = any(("delete" in t["title"].lower() or "edit" in t["title"].lower()
@@ -224,8 +240,26 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
                 break
     else:
         for i, td in enumerate(todos):
+            if cancel is not None and cancel.is_set():
+                out.append("cancelled by user")
+                break
+            if inbox is not None:
+                try:
+                    while True:
+                        note = inbox.get_nowait()
+                        out.append(f" [note] {str(note)[:80]}")
+                        if live_cb:
+                            live_cb(f"note mila: {str(note)[:60]}")
+                except Exception:
+                    pass
             if live_cb and use_multi:
                 live_cb(f"[{td['agent']}] abhi ye kar raha hu: {td['title'][:45]}")
+            td["status"] = "doing"
+            if step_cb:
+                try:
+                    step_cb(td["title"][:50], "doing")
+                except Exception:
+                    pass
             res = _dispatch(td["title"], live_cb if not use_multi else None, ask_cb, level, _run_id)
             if res == "Delete cancel — permission deny":
                 td["status"] = "pending"
@@ -233,6 +267,11 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
                 break
             td["status"] = "done"
             td["result"] = res[:200]
+            if step_cb:
+                try:
+                    step_cb(td["title"][:50], "done")
+                except Exception:
+                    pass
             out.append(f" [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}")
     _mcp.unload_idle(0)
     base = " | ".join(out)[:300]

@@ -30,7 +30,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/fresh` `/ship` `/autopilot` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
+TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)
@@ -68,5 +68,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.6.0 — maintenance batch in. Tests 70 pass + benchmark 12/12 (hermetic).
+v0.6.0 — maintenance batch in. Tests 74 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.

@@ -39,6 +39,82 @@ def ask_main(q):
     return Confirm.ask(f"[bold yellow]{q[:300]}[/]")
 
 
+def _run_bg(task):
+    """Background task + live-todo panel + interject/cancel.
+    Task ek thread me, stdin sirf main thread padhta hai (dual-reader mess nahi).
+    Beech me kuch likho → note task ko; 'ruk jao'/'cancel' → clean stop."""
+    import queue
+    import threading
+    import time as _t
+    from ..agents.orchestrator import decompose as _deco
+    try:
+        jobs = _deco(task)
+    except Exception:
+        jobs = []
+    todos = [{"title": j["step"][:45], "agent": j["agent"], "status": "pending"} for j in jobs] or [
+        {"title": task[:45], "agent": "general", "status": "pending"}]
+    shared = {"msg": "shuru...", "done": False, "result": None}
+    inbox, cancel = queue.Queue(), threading.Event()
+
+    def _step(title, status):
+        for td in todos:
+            if td["title"][:30] == (title or "")[:30]:
+                td["status"] = status
+                break
+        else:
+            todos.append({"title": (title or "")[:45], "agent": "brain", "status": status})
+        shared["msg"] = f"{title[:60]} [{status}]"
+
+    def _live(m):
+        shared["msg"] = m
+
+    def _work():
+        try:
+            shared["result"] = run_task(task, live_cb=_live, ask_cb=lambda q: False,
+                                        step_cb=_step, cancel=cancel, inbox=inbox)
+        except Exception as e:
+            shared["result"] = {"status": "error", "summary": f"BG error: {e}"[:200],
+                                "todos": todos, "endpoint": "-", "mode": "bg"}
+        shared["done"] = True
+
+    def _render():
+        t = Table(show_header=False, border_style="dim", box=None)
+        t.add_column(" ", style="dim")
+        t.add_column("Step", style="bold")
+        t.add_column("Agent", style="dim")
+        glyph = {"pending": "○", "doing": "→", "done": "✓"}
+        for td in todos[-12:]:
+            st = td.get("status", "pending")
+            t.add_row(glyph.get(st, "○"), td["title"][:45], td.get("agent", ""))
+        g = Group(t, Text(shared["msg"][:90], style="dim"))
+        return Panel(g, title=" BG task (likho = note, 'ruk jao' = cancel)",
+                     border_style=th.ACCENT, padding=(0, 1))
+
+    th_run = threading.Thread(target=_work, daemon=True)
+    th_run.start()
+    with Live(_render(), console=console, refresh_per_second=4) as live:
+        while not shared["done"]:
+            live.update(_render())
+            try:
+                line = Prompt.ask(f"[bold {th.ACCENT}]bg[/] [dim]›[/]").strip()
+            except (EOFError, KeyboardInterrupt):
+                cancel.set()
+                break
+            if shared["done"]:
+                break
+            low = line.lower()
+            if low in ("ruk jao", "ruko", "cancel", "stop", "/cancel"):
+                cancel.set()
+                shared["msg"] = "rukne ka signal — wind-down..."
+            elif line:
+                inbox.put(line)
+                shared["msg"] = f"note bheja: {line[:60]}"
+    th_run.join(timeout=30)
+    res = shared["result"] or {"status": "cancelled", "summary": "Task roka.",
+                               "todos": todos, "endpoint": "-", "mode": "bg"}
+    show_result(res)
+
+
 def _status_strip():
     parts = []
     try:
@@ -522,7 +598,14 @@ def main_loop():
                 console.print(f"[green]{result}[/]")
                 continue
             if len(parts) >= 2 and parts[1] == "list":
-                console.print("[dim]No API keys configured yet. Use: /keys add <provider> <key>[/]")
+                from ..models.router import vault_summary as _vs
+                summ = _vs()
+                if not summ:
+                    console.print("[dim]No API keys configured yet. Use: /keys add <provider> <key>[/]")
+                else:
+                    for prov, keys in summ.items():
+                        console.print(f"[bold]{prov}[/] ({len(keys)}): " +
+                                      ", ".join(f"[dim]{k}[/]" for k in keys))
                 console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai[/]")
                 continue
             console.print("[dim]Usage: /keys add <provider> <key> | /keys list[/]")
@@ -597,6 +680,13 @@ def main_loop():
                 continue
             res = _run_with_live(f"explore karo: {parts[1].strip()}")
             show_result(res)
+            continue
+        if task.startswith("/bg"):
+            parts = task.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                console.print("[dim]Use: /bg <task> — background + live-todo + beech me note/cancel[/]")
+                continue
+            _run_bg(parts[1].strip())
             continue
         if task.startswith("/fresh"):
             from .. import workflows as _wf

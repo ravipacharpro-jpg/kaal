@@ -810,5 +810,53 @@ class TestMaintenanceBatch(unittest.TestCase):
                 pass
 
 
+class TestBgHooks(unittest.TestCase):
+    """Live-todo hooks: step_cb + cancel + inbox (+ vault masked list)."""
+
+    def test_step_cb_legacy(self):
+        from kaal.agent import run_task
+        events = []
+        res = run_task("test alpha kaam, test beta kaam",
+                       ask_cb=lambda q: False,
+                       step_cb=lambda t, s: events.append((t, s)))
+        self.assertEqual(res["status"], "done")
+        kinds = {s for _, s in events}
+        self.assertIn("doing", kinds)
+        self.assertIn("done", kinds)
+
+    def test_cancel_preset(self):
+        import threading
+        from kaal.agent import run_task
+        ev = threading.Event()
+        ev.set()
+        res = run_task("test alpha kaam, test beta kaam",
+                       ask_cb=lambda q: False, cancel=ev)
+        self.assertIn("cancel", res["summary"].lower())
+
+    def test_inbox_note_lands(self):
+        import queue
+        from kaal.agent import run_task
+        q = queue.Queue()
+        q.put("beech wali note dhyan rakhna")
+        res = run_task("test alpha kaam", ask_cb=lambda q2: False, inbox=q)
+        self.assertIn("note", res["summary"].lower())
+
+    def test_vault_summary_masked(self):
+        from kaal.models import router as rt
+        import tempfile, os as _os
+        d = tempfile.mkdtemp()
+        old_v, old_c = rt.VAULT, rt.CONFIG_DIR
+        rt.VAULT, rt.CONFIG_DIR = _os.path.join(d, "vault.json"), d
+        try:
+            rt.add_user_key("openai", "sk-testkey1234567890")
+            s = rt.vault_summary()
+            self.assertIn("openai", s)
+            full = "sk-testkey1234567890"
+            self.assertNotIn(full, str(s))
+            self.assertIn("sk-tes", s["openai"][0])
+        finally:
+            rt.VAULT, rt.CONFIG_DIR = old_v, old_c
+
+
 if __name__ == "__main__":
     unittest.main()

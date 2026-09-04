@@ -467,3 +467,16 @@ def add_user_key(provider, key):
         pass
     n = len(vault['providers'][provider])
     return f"{provider} key add ho gayi ({n} total, {mode})"
+
+def vault_summary():
+    """Vault ka masked summary: {provider: ['sk-ab12...wxyz', ...]}. Keys kabhi poori nahi."""
+    vault = _load_vault()
+    out = {}
+    for prov, keys in (vault.get("providers") or {}).items():
+        masked = []
+        for k in (keys or []):
+            key = k.get("key") if isinstance(k, dict) else k
+            key = str(key or "")
+            masked.append(key[:6] + "..." + key[-4:] if len(key) > 12 else "***")
+        out[prov] = masked
+    return out

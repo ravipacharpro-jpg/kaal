@@ -121,11 +121,14 @@ def _run_parallel(items, ask_cb, live_cb):
         return list(ex.map(_one, items))
 
 def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
-        ask_text_cb=None, clarifications=0, level=None):
+        ask_text_cb=None, clarifications=0, level=None, step_cb=None,
+        cancel=None, inbox=None):
     """LLM brain loop. Architect plan + editor execute (Aider style).
     jobs = smart-decomposed todos (LLM roles) display ke liye.
     on_token = streaming chunks (TUI live). ask_text_cb = clarification answers.
-    level=L1/L2/L3 autonomy gate."""
+    level=L1/L2/L3 autonomy gate.
+    step_cb(title, status) = live-todo hook (/bg). cancel = threading.Event (ruk jao).
+    inbox = queue.Queue — beech ke user messages model ko milte hain (interject)."""
     from .router import get_role_model, try_chat_stream
     editor = get_role_model("editor")
     plan_line = ""
@@ -138,6 +141,28 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
               "agent": j["agent"]} for j in (jobs or [])]
     endpoint = "rule-based"
     for step in range(max_iters):
+        if cancel is not None and cancel.is_set():
+            todos.append({"title": "cancelled by user", "status": "done", "agent": "brain"})
+            return todos, "User ne roka — jitna hua: " + (
+                todos[-1].get("result", "") if todos else "kuch nahi"), endpoint
+        if inbox is not None:
+            try:
+                notes = []
+                while True:
+                    notes.append(inbox.get_nowait())
+            except Exception:
+                pass
+            for note in notes:
+                msgs.append({"role": "user",
+                             "content": f"INTERJECT (user beech me): {str(note)[:300]}\n"
+                                        "Isko dhyan me rakho, kaam jari rakho."})
+                if live_cb:
+                    live_cb(f"note mila: {str(note)[:60]}")
+        if step_cb:
+            try:
+                step_cb(f"brain step {step + 1}/{max_iters}", "doing")
+            except Exception:
+                pass
         msgs = _compress(msgs)
         buf = []
         def _stream(piece):
@@ -231,6 +256,11 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
             pass
         todos.append({"title": f"{spec['name']}: {think}"[:50], "status": "done",
                       "agent": "brain", "result": out[:200]})
+        if step_cb:
+            try:
+                step_cb(f"{spec['name']}: {think}"[:50], "done")
+            except Exception:
+                pass
         msgs.append({"role": "assistant", "content": txt})
         msgs.append({"role": "user", "content": f"TOOL RESULT ({spec['name']}):\n{out}\nAgle step ka JSON do."})
     return todos, "Max steps — jitna hua summary: " + (todos[-1].get("result", "") if todos else "kuch nahi"), endpoint
