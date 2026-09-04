@@ -1265,10 +1265,11 @@ class TestPaletteSetup(unittest.TestCase):
         show_dashboard()  # crash nahi hona chahiye
 
     def test_brand_banner(self):
-        from kaal.tui.brand import brand, VERSION, agent_name
+        from kaal.tui.brand import brand, VERSION, agent_name, BIG
         b = brand()
-        for token in ("THINK", "ACT", "VERIFY", "KAAL", VERSION):
+        for token in ("THINK", "ACT", "VERIFY", "██╗", VERSION):
             self.assertIn(token, b)
+        self.assertIn("██╗", BIG)
         self.assertEqual(agent_name(), "kaal")
 
     def test_show_header_no_crash(self):
