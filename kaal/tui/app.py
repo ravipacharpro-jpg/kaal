@@ -129,6 +129,10 @@ def _status_strip():
     except Exception:
         pass
     try:
+        parts.append(f"[dim]{get_model()}[/] · [dim]{get_effort()}[/]")
+    except Exception:
+        pass
+    try:
         parts.append(f"[dim]{plat_describe().replace(' ', '')}[/]")
     except Exception:
         pass

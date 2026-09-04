@@ -1264,6 +1264,13 @@ class TestPaletteSetup(unittest.TestCase):
             self.assertIn(k, d)
         show_dashboard()  # crash nahi hona chahiye
 
+    def test_brand_banner(self):
+        from kaal.tui.brand import brand, VERSION, agent_name
+        b = brand()
+        for token in ("THINK", "ACT", "VERIFY", "KAAL", VERSION):
+            self.assertIn(token, b)
+        self.assertEqual(agent_name(), "kaal")
+
     def test_lazy_spec(self):
         from kaal.skills import tools as T
         full = T.spec_text()
