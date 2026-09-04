@@ -65,7 +65,7 @@ def _input_box(state):
     model = str(d.get("model", "auto"))
     # Nexus-style: left accent border only (no full box)
     _left = _Box("    \n    \n    \n│   \n    \n    \n    \n    ")
-    inner = Text("Ask anything...  (type + Enter)", style="dim")
+    inner = Text('Ask anything...  "Fix broken tests"', style="dim")
     box = Panel(inner, box=_left, border_style="magenta", padding=(0, 2))
     meta = Text(f"kaal · {model} · {d.get('effort', 'medium')}", style="magenta")
     hints = Text("/agents  ctrl+p commands  /dashboard", style="dim")

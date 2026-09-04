@@ -18,7 +18,8 @@ BANNER = BIG + """
 [/][cyan]   ╭───────┬───────┬───────╮
    │[/][white] THINK [/][cyan]│[/][bold cyan] ACT  [/][cyan]│[/][green] VERIFY[/][cyan]│
    ╰───────┴───────┴───────╯[/]
-[cyan]             ●[/][dim]  KAAL · AHEAD OF TIME · {version}[/]""".format(version=VERSION)
+[cyan]             ●[/][dim]  KAAL · POWER CORE · {version}
+     KAAL ...Autonomous agent, ahead of time![/]""".format(version=VERSION)
 
 
 def agent_name():
