@@ -1,0 +1,42 @@
+# Kaal Commands
+
+Total: 38 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/palette.py`.
+
+- `/bg <task>` — background + live-todo + interject
+- `/plan <task>` — numbered plan likho
+- `/approve` — pending plan approve + execute
+- `/review <file>` — outline + syntax + checklist review
+- `/research <query>` — explorer read-only research
+- `/fresh <ticket>` — branch + 5-phase cycle
+- `/ship [msg]` — secret-scan commit + push
+- `/autopilot` — due jobs (max 3)
+- `/model` — default/architect/editor model → options: auto/1/2/3
+- `/effort` — reasoning depth → options: low/medium/high
+- `/perm` — permissions matrix → options: delete_files/code_execution/browser/secrets
+- `/keys` — API keys add/list/revive → options: add/list/revive
+- `/theme` — accent color → options: cyan/green/magenta/yellow
+- `/session` — past sessions list/resume
+- `/setup` — onboarding: provider keys add + test
+- `/agents` — specialist personas dekho
+- `/platform` — platform capabilities + probes
+- `/endpoints` — 20 targets + budget
+- `/budget` — kharch summary
+- `/memory` — SQLite sessions
+- `/user` — USER.md add/list → options: add
+- `/thread` — thread continuity → options: clear
+- `/trace` — run history table
+- `/tree` — run-wise execution tree
+- `/ollama` — local models pull/list
+- `/schedule` — roz auto-kaam
+- `/sandbox` — docker on/off (PC) → options: on/off
+- `/checkpoint` — manual checkpoint
+- `/rewind` — last checkpoint wapas
+- `/export` — session markdown export
+- `/recipe` — reusable workflows
+- `/plugin` — plugins enable/disable
+- `/voice` — mic input (Termux:API)
+- `/cache` — prompt cache stats/clear → options: clear
+- `/comment-zh <file>` — Chinese comments (code same)
+- `/reflect` — past reflections dekho
+- `/lsp` — diagnostics/hover/definition (server ho to) → options: diag/hover/def
+- `/quit` — band karo

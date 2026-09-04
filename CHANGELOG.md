@@ -1,6 +1,9 @@
 # Kaal Changelog
 
-## v0.6.0 — platform-matrix batch (chhota kam, bada zyada)
+## v0.6.0 — premium-repo batch
+- README hero: badges, real demo output, comparison table, docs links
+- `docs/COMMANDS.md` (palette-generated, 38), `docs/ARCHITECTURE.md` (mermaid)
+- GitHub issue/PR templates; khali stray dirs saaf
 - Added: capability matrix + live binary probes (`platform_adapt.capabilities()`)
 - Added: `/platform` command (matrix + probes table)
 - Index cap: Termux 60 files, PC 200 (OOM guard)

@@ -1,8 +1,26 @@
 # Kaal — Ahead of Time
 
-Rule-based + optional-LLM agent — Termux / Linux / macOS / Windows.
-API key ya local Ollama ho to LLM brain, nahi to fast keyword path (AI nahi — neeche Design me saaf likha hai).
-Premium Rich TUI: Todo panel + 1-line live Hindi status, TUI me code dump nahi.
+![tests](https://github.com/ravipacharpro-jpg/kaal/actions/workflows/test.yml/badge.svg)
+![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
+![platform](https://img.shields.io/badge/platform-Termux%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows-green)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
+![version](https://img.shields.io/badge/version-v0.6.0-cyan)
+
+Autonomous AI coding agent — **phone pe bhi, PC pe bhi.** API key ya local Ollama ho to LLM brain, nahi to fast keyword path (AI nahi — neeche Design me saaf likha hai).
+
+```bash
+$ kaal --mode json "file list memory"
+{"task": "file list memory", "result": {"status": "done", "summary": " [general] file list memory: ... me 25 cheez: .git, .github, .gitignore ...", "endpoint": "omniroute/auto", "mode": "single"}}
+```
+
+## Kyun Kaal? (competitors se alag)
+| | Kaal | Claude Code / OpenCode |
+|---|---|---|
+| Phone (Termux) pe chalta hai | ✅ | ❌ |
+| ₹0 me autonomous (free-tier rotation + cache) | ✅ | ❌ (paid ya key lao) |
+| Self-healing keys (dead auto-kick + revive) | ✅ | ❌ |
+| Har release SWE-score ke saath | ✅ (`benchmarks/`) | chhupate hain |
+| Zero heavy deps (stdlib-first) | ✅ | ❌ (node/bun stack) |
 
 ## Install
 ```bash
@@ -30,7 +48,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands: `/palette` (Ctrl+P) `/setup` `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/theme` `/session` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
+TUI commands (38 — poori list: [`docs/COMMANDS.md`](docs/COMMANDS.md), palette: Ctrl+P): `/palette` `/setup` `/endpoints` `/platform` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/theme` `/session` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)
@@ -78,5 +96,11 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.6.0 — acp/lsp batch in. Tests 97 pass + benchmark 12/12 (hermetic).
+v0.6.0 — acp/lsp batch in. Tests 98 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.
+
+## Docs
+- [`docs/COMMANDS.md`](docs/COMMANDS.md) — 38 commands (palette se auto-generated)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, data flow, platform gating
+- [`CHANGELOG.md`](CHANGELOG.md) — har batch kya laya
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — naya skill 1 file + SKILL dict me
