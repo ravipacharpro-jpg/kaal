@@ -618,5 +618,41 @@ class TestWishlistBatch2(unittest.TestCase):
         self.assertIn("rich", out)
 
 
+class TestWishlistBatch3(unittest.TestCase):
+    """Session caps, TF-IDF rank, persistent REPL."""
+
+    def test_session_cap_helpers(self):
+        from kaal.models import router as rt
+        rt.session_reset()
+        self.assertEqual(rt.session_used(), 0)
+        self.assertFalse(rt.session_over())
+        self.assertGreaterEqual(rt.session_cap(), 100)
+        rt._SESSION["tokens"] = rt.session_cap() + 1
+        self.assertTrue(rt.session_over())
+        rt.session_reset()
+
+    def test_ranked_search(self):
+        from kaal.memory import store as ms
+        ms.save("aam ka achaar recipe", "aam tel masala achaar")
+        ms.save("python me traceback debug", "traceback line error fix")
+        top = ms.ranked_search("achaar recipe")
+        self.assertTrue(top)
+        self.assertIn("achaar", (top[0][0] + top[0][1]).lower())
+        top2 = ms.ranked_search("traceback fix")
+        self.assertTrue(top2)
+        self.assertIn("traceback", (top2[0][0] + top2[0][1]).lower())
+
+    def test_repl_persist_and_guard(self):
+        from kaal.skills import repl
+        repl.reset()
+        self.assertIn("OK", repl.run("x = 41"))
+        self.assertIn("42", repl.run("print(x + 1)"))
+        self.assertIn("allowed nahi", repl.run("import os"))
+        self.assertIn("allowed nahi", repl.run("open('f').read()"))
+        self.assertIn("x", repl.vars_list())
+        repl.reset()
+        self.assertEqual(repl.vars_list(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

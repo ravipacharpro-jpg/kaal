@@ -22,7 +22,7 @@ DEFAULTS = {
     "model": {"default": "omniroute/auto",
               "fallback_chain": ["groq_free", "openrouter_free", "ollama_local"],
               "economy_policy": "auto/smart", "temperature": 0.7},
-    "economy": {"daily_budget": 5000, "per_task_budget": 500, "policy": "auto/smart"},
+    "economy": {"daily_budget": 5000, "per_task_budget": 500, "session_cap": 2000, "policy": "auto/smart"},
     "permissions": {"delete_files": "ask", "browser": "ask",
                     "code_execution": "ask", "secrets": "ask", "api_calls": "approved"},
     "tui": {"library": "rich", "colors": True, "status_bar": True,

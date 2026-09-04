@@ -138,6 +138,7 @@ def track_usage(name, tokens=100):
     if usage.get("date") != today:
         usage = {"date": today}
     usage[name] = usage.get(name, 0) + tokens
+    _SESSION["tokens"] += tokens
     os.makedirs(CONFIG_DIR, exist_ok=True)
     try:
         with open(USAGE, "w", encoding="utf-8") as f:
@@ -325,6 +326,28 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
     return "rule-based", ""
 
 _COOL = {}
+
+_SESSION = {"tokens": 0}
+
+def session_used():
+    """Is process me ab tak kitne tokens kharch hue."""
+    return _SESSION["tokens"]
+
+def session_reset():
+    _SESSION["tokens"] = 0
+    return "Session counter reset"
+
+def session_cap():
+    """Per-session token cap (economy.session_cap, default 2000)."""
+    try:
+        from .. import config_store as _cs
+        return int(_cs.get_all().get("economy", {}).get("session_cap", 2000))
+    except Exception:
+        return 2000
+
+def session_over():
+    """Cap cross hua? True to brain band, legacy-only (budget burn guard)."""
+    return session_used() >= session_cap()
 
 def _cool(key, secs=0):
     """Cooldown registry. _cool(key) -> expiry ts; _cool(key, 60) sets."""

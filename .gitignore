@@ -21,4 +21,5 @@ config/model.json
 config/sandbox.json
 config/schedule.log
 config/plugins.json
+config/kaal.pid
 logs/trace.jsonl

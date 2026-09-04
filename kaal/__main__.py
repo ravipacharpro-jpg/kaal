@@ -1,4 +1,4 @@
-"""kaal CLI entry. TUI default; flags: --history, --resume, --schedule, direct task."""
+"""kaal CLI entry. TUI default; flags: --history, --resume, --schedule, --heartbeat, --daemon, direct task."""
 import sys
 from rich.console import Console
 
@@ -51,6 +51,27 @@ def main():
         for line in run_due(lambda t, level: run_task(t, ask_cb=lambda q: False, level=level)["summary"][:150], lv):
             console.print(line)
         return
+    if args and args[0] == "--heartbeat":
+        # One-shot due-run — cron / Termux:JobScheduler se chalao (daemon nahi chahiye)
+        from .scheduler import run_due
+        from .agent import run_task
+        lv = _level()
+        n = 0
+        for line in run_due(lambda t, level: run_task(t, ask_cb=lambda q: False, level=level)["summary"][:150], lv):
+            console.print(line)
+            n += 1
+        console.print(f"[dim]Heartbeat done — {n} job(s), autonomy {lv}.[/]")
+        return
+    if args and args[0] == "--daemon":
+        import os as _os
+        pidf = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "config", "kaal.pid"))
+        try:
+            with open(pidf, "w", encoding="utf-8") as f:
+                f.write(str(_os.getpid()))
+        except OSError:
+            pass
+        console.print(f"[dim]Daemon PID {_os.getpid()} → {pidf} (stop: kill + file delete). PC pe systemd unit bhi hai.[/]")
+        args = ["--serve"] + args[1:]
     if args and args[0] == "--serve":
         import time
         from .scheduler import run_due

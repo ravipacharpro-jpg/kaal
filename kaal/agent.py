@@ -1,5 +1,6 @@
 """Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
 from .models.router import select_endpoint, track_usage, budget_status, try_llm, brain_active
+from .models.router import session_over, session_used, session_cap
 from .models import brain as _brain
 from .skills import files as _files
 from .skills import code as _code
@@ -128,7 +129,9 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         except Exception:
             pass
     # --- BRAIN PATH (Claude-style): model har step decide karta hai ---
-    if brain_active():
+    # Session cap cross to brain band (legacy-only) — budget burn guard
+    _sess_over = session_over()
+    if brain_active() and not _sess_over:
         if live_cb:
             live_cb("brain active — model soch raha hu")
         try:
@@ -260,6 +263,8 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     daily, _per = _cfg.get_budget()
     b = budget_status(daily)
     summ = (base + llm_note + rollback_note)[:450]
+    if _sess_over:
+        summ = f"[session cap {session_used()}/{session_cap()} — brain off, legacy] | " + summ
     if hint:
         summ = f"{hint[:150]} | " + summ
     _observe("run_complete", task, base[:150])

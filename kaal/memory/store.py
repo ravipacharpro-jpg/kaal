@@ -30,6 +30,47 @@ def search(query, n=5):
     c.close()
     return rows
 
+def _tokens(s):
+    import re
+    return [w for w in re.findall(r"[a-z0-9]{2,}", s.lower()) if len(w) < 30]
+
+def ranked_search(query, n=5):
+    """TF-IDF cosine rank over past sessions — pure stdlib, zero-dep.
+    LIKE se behtar: relevant purana context upar. Embeddings nahi, honest TF-IDF."""
+    import math
+    from collections import Counter
+    c = _db()
+    rows = c.execute("SELECT task,summary FROM sessions").fetchall()
+    c.close()
+    docs = [(t, s, _tokens(f"{t} {s}")) for t, s in rows]
+    docs = [d for d in docs if d[2]]
+    if not docs:
+        return []
+    q = _tokens(query)
+    if not q:
+        return []
+    N = len(docs)
+    df = Counter()
+    for _, _, toks in docs:
+        for w in set(toks):
+            df[w] += 1
+    idf = {w: math.log(1 + N / (1 + df[w])) for w in df}
+    def vec(toks):
+        tf = Counter(toks)
+        return {w: (1 + math.log(tf[w])) * idf[w] for w in tf if w in idf}
+    qv = vec(q)
+    qn = math.sqrt(sum(v * v for v in qv.values())) or 1.0
+    scored = []
+    for t, s, toks in docs:
+        dv = vec(toks)
+        dot = sum(qv.get(w, 0.0) * dv.get(w, 0.0) for w in qv)
+        dn = math.sqrt(sum(v * v for v in dv.values())) or 1.0
+        sc = dot / (qn * dn)
+        if sc > 0:
+            scored.append((sc, t, s))
+    scored.sort(reverse=True)
+    return [(t, s) for _, t, s in scored[:n]]
+
 def export_md(path="", n=20):
     """Session transcript markdown me (OpenCode share-style, local file)."""
     import datetime

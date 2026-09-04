@@ -45,13 +45,15 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effor
 - **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
 - **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
 - **Safety:** L1/L2/L3 autonomy (scheduled default L1 report-only, `--unattended` = L3), unattended auto-DENY, `[UNTRUSTED]` injection marking + prompt guard, AST sandbox, secret-scan pre-commit, vault 0600 + optional AES (`cryptography` ho to, PC pe)
-- **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), vision, plugins
+- **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), repl (persistent audited namespace), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), vision, plugins
 - **Multi-agent:** 5 personas + LLM role classify (brain mode), desktop pe parallel, Termux pe sequential
-- **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate
-- **Memory:** SQLite + FTS patterns + thread continuity + USER.md/MEMORY.md (editable) + auto-skills + PLAN.md + recipes + session export
+- **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate, per-session cap (default 2000, brain auto-off)
+- **Memory:** SQLite + FTS patterns + TF-IDF ranked search + thread continuity + USER.md/MEMORY.md (editable) + auto-skills + PLAN.md + recipes + session export
 - **Serve/vision/bridge:** `--serve` loop + systemd unit (desktop, CI-validated), image_describe (vision key pe), `--telegram` phone bridge (channels/ gateway — discord/whatsapp pattern ready), `/voice` (Termux:API mic)
 ```bash
 kaal --telegram   # phone se task (config/telegram.json me token+ids)
+kaal --heartbeat  # cron/Termux:JobScheduler se one-shot due jobs
+kaal --daemon 300 # PID file + serve loop (stop: kill, PID file delete)
 ```
 - **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
 
