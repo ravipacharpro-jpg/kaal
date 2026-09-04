@@ -1,6 +1,10 @@
 # Kaal Changelog
 
-## v0.6.0 — applog batch (diagnosis)
+## v0.6.0 — zoom/clean batch (Nexus-look)
+- Added: `/zoom in|out|compact|normal|large` — UI density (spacing + columns); font terminal se
+- Added: `/clean` toggle — Nexus-style clean screen (default on): estimate + long hints hidden
+- Thought timing fix (`_t0` bug), Nexus glyphs [x]/[ ]/[>], session bottom bar
+- Commands doc regen (43)
 - Added: `logs/kaal.log` rotating file log (512KB x3) + secret redaction
 - Task start/end/deny/crash logged; `/logs [n]` tail viewer
 - Commands doc regen (41)

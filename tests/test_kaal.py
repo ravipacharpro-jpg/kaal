@@ -1332,6 +1332,26 @@ class TestPaletteSetup(unittest.TestCase):
         self.assertNotIn("FAKEKEY1234567890", blob)
         self.assertIn("sk-***", blob)
 
+    def test_zoom_clean(self):
+        from kaal.tui import theme as th
+        self.assertIn(th.get_zoom(), ("compact", "normal", "large"))
+        self.assertIn(th.zoom_padding(), [(0, 0), (0, 1), (1, 2)])
+        self.assertIn(th.wide_threshold(), [80, 100, 130])
+        self.assertIsInstance(th.clean_mode(), bool)
+        old_z, old_c = th.get_zoom(), th.clean_mode()
+        try:
+            th.set_zoom("compact")
+            self.assertEqual(th.get_zoom(), "compact")
+            th.set_zoom("in")
+            self.assertEqual(th.get_zoom(), "normal")
+            th.set_zoom("xx")
+            self.assertEqual(th.get_zoom(), "normal")
+            th.set_clean(False)
+            self.assertFalse(th.clean_mode())
+        finally:
+            th.set_zoom(old_z)
+            th.set_clean(old_c)
+
     def test_platform_matrix(self):
         from kaal import platform_adapt as pa
         self.assertIn(pa.detect(), ("termux", "linux", "macos", "windows"))

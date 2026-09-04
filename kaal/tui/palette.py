@@ -22,6 +22,8 @@ COMMANDS = [
     ("/session", "past sessions list/resume", None),
     ("/setup", "onboarding: provider keys add + test", None),
     ("/agents", "specialist personas dekho", None),
+    ("/zoom", "UI density", ["in", "out", "compact", "normal", "large"]),
+    ("/clean", "clean screen toggle", None),
     ("/lang", "UI language", ["hi", "en", "zh"]),
     ("/dashboard", "status+sessions+keys overview", None),
     ("/platform", "platform capabilities + probes", None),

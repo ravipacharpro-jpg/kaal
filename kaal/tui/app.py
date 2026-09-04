@@ -177,7 +177,11 @@ def show_header():
     except Exception:
         _sess = ""
     console.print(_Align.right(f"[dim]{_sess}~  KAAL {_V}[/]"))
-    console.print(th.FOOTER_HINT + "\n")
+    try:
+        _clean = th.clean_mode()
+    except Exception:
+        _clean = True
+    console.print((th.SHORT_HINT if _clean else th.FOOTER_HINT) + "\n")
 
 
 def dashboard_data():
@@ -230,7 +234,7 @@ def show_dashboard():
     t1.add_column("V", style="bold")
     for k in ("platform", "model", "effort", "budget", "session", "cache"):
         t1.add_row(k, str(d[k])[:40])
-    p1 = Panel(t1, title=" Status", border_style=th.ACCENT, padding=(0, 1))
+    p1 = Panel(t1, title=" Status", border_style=th.ACCENT, padding=th.zoom_padding())
     if d["sessions"]:
         t2 = Table(show_header=False, border_style="dim", box=None, pad_edge=False)
         t2.add_column("Task", style="bold")
@@ -238,7 +242,7 @@ def show_dashboard():
             t2.add_row(t[:44])
     else:
         t2 = Text("Khaali — pehla task karo.", style="dim")
-    p2 = Panel(t2, title=" Sessions", border_style="dim", padding=(0, 1))
+    p2 = Panel(t2, title=" Sessions", border_style="dim", padding=th.zoom_padding())
     if d["keys"]:
         t3 = Table(show_header=False, border_style="dim", box=None, pad_edge=False)
         t3.add_column("Provider", style="bold")
@@ -247,8 +251,8 @@ def show_dashboard():
             t3.add_row(p, str(n))
     else:
         t3 = Text("No keys — /setup karo.", style="dim")
-    p3 = Panel(t3, title=" Keys", border_style="dim", padding=(0, 1))
-    if console.width >= 100:
+    p3 = Panel(t3, title=" Keys", border_style="dim", padding=th.zoom_padding())
+    if console.width >= th.wide_threshold():
         console.print(Columns([p1, p2, p3], equal=True, expand=True))
     else:
         console.print(p1)
@@ -279,7 +283,7 @@ def show_todos(todos):
     t.add_column("Kaam", style="bold")
     t.add_column("Agent", style=DIM)
     t.add_column("Status", justify="right")
-    icon = {"pending": "[dim]·[/]", "doing": "[yellow]→[/]", "done": "[green]✔[/]"}
+    icon = {"pending": "[dim][ ][/]", "doing": "[yellow][>][/]", "done": "[green][x][/]"}
     for td in todos:
         t.add_row(icon.get(td["status"], "?"), td["title"][:46],
                   td.get("agent", "-")[:14], td["status"])
@@ -299,9 +303,9 @@ def show_result(res):
         pass
     body = Group(Markdown(res["summary"][:600]), Text(footer, style=DIM))
     result = Panel(body, title="[bold green]" + _t('result_title') + "[/]",
-                    border_style="dim", padding=(1, 2))
+                    border_style="dim", padding=th.zoom_padding())
     todos = show_todos(res["todos"])
-    if wide:
+    if console.width >= th.wide_threshold():
         console.print(Columns([todos, result], equal=True, expand=True))
     else:
         console.print(todos)
@@ -352,8 +356,11 @@ def show_agents():
 
 def _run_with_live(task):
     from ..models.router import estimate
+    import time as _tt0
+    _t0 = _tt0.time()
     try:
-        console.print(f"[dim] Cost estimate: {estimate(task)}[/]")
+        if not th.clean_mode():
+            console.print(f"[dim] Cost estimate: {estimate(task)}[/]")
     except Exception:
         pass
     try:
@@ -411,6 +418,12 @@ def _run_with_live(task):
                        on_token=stream_wrap,
                        ask_text_cb=lambda q: Prompt.ask(f"[bold yellow] {q}[/]"))
         prog.update(pt, completed=100)
+    try:
+        import time as _tt
+        _secs = round(_tt.time() - _t0, 1)
+        console.print(f"[dim]Thought · {_secs}s[/]")
+    except Exception:
+        pass
     return res
 
 
@@ -460,6 +473,17 @@ def main_loop():
             continue
         if task == "/dashboard":
             show_dashboard()
+            continue
+        if task.startswith("/zoom"):
+            parts = task.split()
+            if len(parts) < 2:
+                console.print(f"[dim]Zoom: {th.get_zoom()} (compact|normal|large)[/]")
+                console.print("[dim]Use: /zoom in|out|compact|normal|large — font terminal se badlo[/]")
+                continue
+            console.print(f"[green]{th.set_zoom(parts[1])}[/]")
+            continue
+        if task == "/clean":
+            console.print(f"[green]{th.set_clean(not th.clean_mode())}[/]")
             continue
         if task.startswith("/lang"):
             from ..i18n import set_lang, get_lang, LANGS
