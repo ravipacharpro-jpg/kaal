@@ -140,14 +140,38 @@ def _status_strip():
 
 
 def show_header():
-    console.print()
-    console.print(brand())
+    """Nexus-style landing: fresh screen, centered brand, input box visual,
+    model line, hints, bottom version bar. Narrow screens stack safely."""
+    from rich.align import Align as _Align
     try:
-        console.print(f"[dim]{startup_check()}[/]")
+        console.clear()
     except Exception:
         pass
+    console.print()
+    console.print(_Align.center(brand()))
+    try:
+        from .brand import VERSION as _V
+    except Exception:
+        _V = ""
+    try:
+        _model_line = f"{get_model()} · {get_effort()}"
+    except Exception:
+        _model_line = "auto · medium"
+    try:
+        _b = budget_status()
+        _pct = f"{_b.get('pct', 0)}%"
+    except Exception:
+        _pct = "–"
+    _box_w = min(72, max(40, console.width - 8))
+    _ask = Panel(Text("Ask anything...  (seedha task likho)", style="dim"),
+                 border_style=th.ACCENT, width=_box_w, padding=(0, 2))
+    console.print(_Align.center(_ask))
+    console.print(_Align.center(
+        f"[magenta]kaal[/] [dim]·[/] {_model_line} [dim]·[/] [yellow]{_pct}[/]"))
+    console.print(_Align.center("[dim]/agents  ctrl+p commands  /dashboard[/]"))
     console.print(f"[dim]{_status_strip()}[/]")
     console.print(Rule(style="dim"))
+    console.print(_Align.right(f"[dim]~  KAAL {_V}[/]"))
     console.print(th.FOOTER_HINT + "\n")
 
 

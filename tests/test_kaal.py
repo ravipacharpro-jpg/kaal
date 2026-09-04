@@ -1271,6 +1271,10 @@ class TestPaletteSetup(unittest.TestCase):
             self.assertIn(token, b)
         self.assertEqual(agent_name(), "kaal")
 
+    def test_show_header_no_crash(self):
+        from kaal.tui import app as A
+        A.show_header()  # landing renders without error
+
     def test_lazy_spec(self):
         from kaal.skills import tools as T
         full = T.spec_text()
