@@ -14,7 +14,7 @@ VERSION = "v0.6.0"
 TAGLINE = "autonomous agent · ahead of time"
 
 FOOTER_HINT = ("[dim]/palette /dashboard /endpoints /platform /budget /memory /user /thread /trace /tree /agents /key /model /effort /ollama /schedule "
-               "/perm /plan /approve /review /research /bg /fresh /ship /autopilot /cache /comment-zh /reflect /recipe /plugin /voice /checkpoint /rewind /export /quit [dim]· seedha task likho[/]")
+               "/perm /plan /approve /review /research /bg /fresh /ship /autopilot /cache /comment-zh /reflect /recipe /plugin /voice /checkpoint /rewind /export /logs /quit [dim]· seedha task likho[/]")
 
 def load_accent():
     """config/tui.json se saved accent lao (global, live)."""

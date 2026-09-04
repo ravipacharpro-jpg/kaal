@@ -120,6 +120,11 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     _t0 = _t.time()
     _run_id = f"{int(_t0)}-{hash(task) & 0xFFFF}"
     from . import trace as _tr
+    try:
+        from . import log as _lg
+        _lg.info(f"task start: {task[:120]} (level={level})")
+    except Exception:
+        pass
 
     def _log(mode, ep, todos, status):
         try:
@@ -206,6 +211,11 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     if op and not _cfg.check_perm(op,
                                   ask_cb, f"Sensitive lag raha hai ({op}): {task[:70]} — aage badhu?"):
         _log("single", ep["name"], todos, "denied")
+        try:
+            from . import log as _lg3
+            _lg3.info(f"task denied: op={op}")
+        except Exception:
+            pass
         return {"status": "denied", "summary": "User ne permission deny ki",
                 "todos": todos, "endpoint": ep["name"], "mode": "single"}
     try:
@@ -337,6 +347,12 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
          "cancelled" if cancelled else "done")
     if cancelled:
         summ = "User ne roka (cancelled) — " + (summ or "kuch nahi hua")
+    try:
+        from . import log as _lg2
+        _lg2.info(f"task end: status={'cancelled' if cancelled else 'done'} "
+                  f"ep={ep['name']} secs={round(_t.time() - _t0, 2)}")
+    except Exception:
+        pass
     return {"status": "cancelled" if cancelled else "done", "summary": summ,
             "todos": todos, "endpoint": ep["name"],
             "mode": "multi" if use_multi else "single",

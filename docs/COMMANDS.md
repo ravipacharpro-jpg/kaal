@@ -1,6 +1,6 @@
 # Kaal Commands
 
-Total: 40 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/palette.py`.
+Total: 41 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/palette.py`.
 
 - `/bg <task>` — background + live-todo + interject
 - `/plan <task>` — numbered plan likho
@@ -27,6 +27,7 @@ Total: 40 slash-commands (palette + TUI). Auto-generated — edit `kaal/tui/pale
 - `/user` — USER.md add/list → options: add
 - `/thread` — thread continuity → options: clear
 - `/trace` — run history table
+- `/logs` — app log tail (diagnosis)
 - `/tree` — run-wise execution tree
 - `/ollama` — local models pull/list
 - `/schedule` — roz auto-kaam

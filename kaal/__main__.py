@@ -5,7 +5,9 @@ from rich.console import Console
 console = Console()
 
 def main():
+    from . import log as _log
     args = sys.argv[1:]
+    _log.info(f"start args={args}")
     if args and args[0] == "--history":
         from .memory.store import recent
         rows = recent(10)
@@ -100,7 +102,12 @@ def main():
         from .tui.app import show_header
         from .agent import run_task
         show_header()
-        res = run_task(" ".join(args), live_cb=print, ask_cb=lambda q: True)
+        try:
+            res = run_task(" ".join(args), live_cb=print, ask_cb=lambda q: True)
+        except Exception as e:
+            from . import log as _log2
+            _log2.error(f"direct task crashed: {e}")
+            raise
         console.print(f" {res['summary']} (via {res['endpoint']})")
     else:
         from .tui.app import main_loop
@@ -117,6 +124,10 @@ def main():
             main_loop()
         except KeyboardInterrupt:
             pass
+        except Exception as e:
+            from . import log as _log3
+            _log3.error(f"tui crashed: {e}")
+            raise
 
 if __name__ == "__main__":
     main()

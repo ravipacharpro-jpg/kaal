@@ -1,6 +1,9 @@
 # Kaal Changelog
 
-## v0.6.0 — security-audit batch (K-01..K-06, external audit)
+## v0.6.0 — applog batch (diagnosis)
+- Added: `logs/kaal.log` rotating file log (512KB x3) + secret redaction
+- Task start/end/deny/crash logged; `/logs [n]` tail viewer
+- Commands doc regen (41)
 - Fixed K-02 (High): symlink traversal — `_safe()` ab realpath-compare (read/write/edit verified-blocked)
 - Fixed K-01 (High): RPC `prompt/run` + `prompt/stream` session_id bind karte hain, unknown reject
 - Fixed K-03: cancel pe status `cancelled` (khali done-summary nahi)

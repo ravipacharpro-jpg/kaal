@@ -31,6 +31,7 @@ COMMANDS = [
     ("/user", "USER.md add/list", ["add"]),
     ("/thread", "thread continuity", ["clear"]),
     ("/trace", "run history table", None),
+    ("/logs", "app log tail (diagnosis)", None),
     ("/tree", "run-wise execution tree", None),
     ("/ollama", "local models pull/list", None),
     ("/schedule", "roz auto-kaam", None),

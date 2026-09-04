@@ -590,6 +590,21 @@ def main_loop():
                 console.print(f"⏰ {j['task'][:60]}")
             console.print("[dim]Use: /schedule add 86400 task | /schedule ls | /schedule rm N | /schedule log[/]")
             continue
+        if task.startswith("/logs"):
+            from .. import log as _lg
+            parts = task.split()
+            try:
+                n = max(1, min(int(parts[1]), 200)) if len(parts) > 1 else 30
+            except Exception:
+                n = 30
+            lines = _lg.tail(n)
+            if not lines:
+                console.print("[dim]Log khaali hai — koi task/crash abhi tak nahi.[/]")
+                continue
+            console.print(Panel("".join(lines)[-3000:],
+                                title=f" logs/kaal.log (akhri {len(lines)})",
+                                border_style="dim", padding=(0, 1)))
+            continue
         if task == "/trace":
             from ..trace import recent as _tr
             rows = _tr()

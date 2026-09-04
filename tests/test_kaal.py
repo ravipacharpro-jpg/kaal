@@ -1316,6 +1316,17 @@ class TestPaletteSetup(unittest.TestCase):
                 with open(tp, "w", encoding="utf-8") as f:
                     f.write(had)
 
+    def test_app_log(self):
+        from kaal import log as _lg
+        _lg.info("test boot")
+        _lg.warn("test warn sk-FAKEKEY1234567890")
+        _lg.error("test error")
+        lines = _lg.tail(10)
+        self.assertTrue(any("test boot" in l for l in lines))
+        blob = "".join(lines)
+        self.assertNotIn("FAKEKEY1234567890", blob)
+        self.assertIn("sk-***", blob)
+
     def test_platform_matrix(self):
         from kaal import platform_adapt as pa
         self.assertIn(pa.detect(), ("termux", "linux", "macos", "windows"))
