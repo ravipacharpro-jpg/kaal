@@ -198,6 +198,46 @@ TOOLS = [
 
 BY_NAME = {t["name"]: t for t in TOOLS}
 
+# Role → tools map (lazy loading: task ko sirf relevant tools dikho, context bacho).
+# Core tools hamesha included (model atakna nahi chahiye).
+CORE_TOOLS = ("file_read", "file_list", "repo_scan", "memory_recall")
+ROLE_TOOLS = {
+    "coder": ("file_outline", "file_write", "file_edit", "file_undo", "code_run",
+              "test_run", "code_search", "checkpoint", "rewind", "git_diff"),
+    "researcher": ("browser_fetch", "github_repo", "github_issues", "code_search"),
+    "explorer": ("browser_fetch", "github_repo", "github_issues", "code_search",
+                 "file_outline"),
+    "analyzer": ("file_outline", "code_search", "test_run", "memory_detail"),
+    "github_specialist": ("github_repo", "github_issues", "pr_open", "git_status",
+                          "git_changelog"),
+    "general": ("file_outline", "browser_fetch", "test_run"),
+    "minimal_change_engineer": ("file_outline", "file_write", "file_edit",
+                                "file_undo", "test_run", "git_diff"),
+    "code_reviewer": ("file_outline", "test_run", "git_diff", "git_status"),
+    "security_architect": ("file_outline", "code_search", "git_diff", "test_run"),
+    "database_optimizer": ("file_outline", "code_search", "test_run"),
+    "software_architect": ("file_outline", "repo_scan", "code_search", "git_diff"),
+    "planner": ("file_outline", "repo_scan", "code_search", "memory_detail"),
+}
+
+def spec_for(task):
+    """Task-relevant tool spec (lazy). Unknown task → core + general. Pure-ish."""
+    try:
+        from ..agents.orchestrator import classify
+        role = classify(task or "")
+    except Exception:
+        role = "general"
+    names = list(CORE_TOOLS) + list(ROLE_TOOLS.get(role, ()))
+    seen, out = set(), []
+    for n in names:
+        if n not in seen and n in BY_NAME:
+            seen.add(n)
+            out.append(BY_NAME[n])
+    lines = ["TOOLS (JSON call karo):"]
+    for t in out:
+        lines.append(f'- {t["name"]}({t.get("params", "-")}): {t.get("desc", "")}')
+    return "\n".join(lines)
+
 def _load_plugins():
     try:
         from . import pluginman as _pl

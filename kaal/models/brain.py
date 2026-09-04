@@ -144,7 +144,7 @@ def run(task, live_cb=None, ask_cb=None, max_iters=10, jobs=None, on_token=None,
     if jobs:
         plan_line = "\nPLAN (roles model ne diye): " + "; ".join(
             f"[{j['agent']}] {j['step'][:60]}" for j in jobs) + "\nIs plan pe chalo."
-    msgs = [{"role": "system", "content": SYSTEM + _tools.spec_text() + _context(task)},
+    msgs = [{"role": "system", "content": SYSTEM + _tools.spec_for(task) + _context(task)},
             {"role": "user", "content": f"TASK: {task}{plan_line}"}]
     todos = [{"title": j["step"][:50], "status": "pending",
               "agent": j["agent"]} for j in (jobs or [])]

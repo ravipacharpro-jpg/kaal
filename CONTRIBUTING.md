@@ -15,6 +15,8 @@ python3 -m pytest tests/ -q   # 51 pass hone chahiye
 - **Permissions default-deny:** naya sensitive op ho to `config_defaults.py` me default `ask`/`deny` rakho, `allow` nahi.
 - **Paths:** repo-root-anchored paths use karo — `kaal/*.py` se single `".."`, `kaal/*/*.py` se `"..", ".."`. `~/config` ya `/home` me kabhi likho mat.
 - **Language:** user-visible Hindi (Hinglish) strings, code comments concise English/Hindi.
+- **i18n:** naya TUI text `kaal/i18n.py` me `t("key")` se — `STRINGS` me hi/en/zh teeno do. Seedha hardcode mat karo.
+- **Lazy loading:** brain ko poora tool-spec mat do — `ROLE_TOOLS` me role entry add karo taaki task-wise subset bane.
 
 ## PR
 - Ek PR = ek logical change. Kya badla / kaise verify kiya / kya uncertain hai — likho.

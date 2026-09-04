@@ -28,6 +28,7 @@ from ..models.router import get_effort, set_effort
 from ..platform_adapt import describe as plat_describe
 from ..scheduler import add as sched_add, due as sched_due
 from ..storage import startup_check
+from ..i18n import t as _t
 from . import theme as th
 from .brand import brand, agent_name
 
@@ -249,7 +250,7 @@ def show_todos(todos):
     for td in todos:
         t.add_row(icon.get(td["status"], "?"), td["title"][:46],
                   td.get("agent", "-")[:14], td["status"])
-    return Panel(t, title="[bold] Tasks[/]", border_style="dim", padding=(0, 1))
+    return Panel(t, title="[bold]" + _t('tasks_title') + "[/]", border_style="dim", padding=(0, 1))
 
 
 def show_result(res):
@@ -264,7 +265,7 @@ def show_result(res):
     except Exception:
         pass
     body = Group(Markdown(res["summary"][:600]), Text(footer, style=DIM))
-    result = Panel(body, title="[bold green] Result[/]",
+    result = Panel(body, title="[bold green]" + _t('result_title') + "[/]",
                     border_style="dim", padding=(1, 2))
     todos = show_todos(res["todos"])
     if wide:
@@ -288,13 +289,13 @@ def show_budget():
     console.print(Panel(
         f"[bold]{bar}[/]  {b['used']}/{b['budget']} tokens ({pct}%)\n"
         f" policy: [bold]{b['mode']}[/]",
-        title=" Budget", border_style=th.WARN, padding=(1, 2)))
+        title=_t('budget_title'), border_style=th.WARN, padding=(1, 2)))
 
 
 def show_memory():
     rows = recent(5)
     if not rows:
-        console.print("[dim]Memory khaali — pehla task karo.[/]")
+        console.print(f"[dim]{_t('memory_empty')}[/]")
         return
     t = Table(show_header=True, header_style=f"bold {th.ACCENT}",
               border_style="dim", box=None)
@@ -390,12 +391,12 @@ def main_loop():
         try:
             task = Prompt.ask(f"[bold {th.ACCENT}]{agent_name()}[/] [dim]›[/]").strip()
         except (EOFError, KeyboardInterrupt):
-            console.print("\n[yellow]Kaal band. Phir milenge.[/]")
+            console.print(f"\n[yellow]{_t('quit_bye')}[/]")
             break
         if not task:
             continue
         if task in ("/quit", "/q", "quit"):
-            console.print("[yellow]Kaal band.[/]")
+            console.print(f"[yellow]{_t('quit_short')}[/]")
             break
         if task in ("\x10", "/palette"):
             # Ctrl+P (raw \x10 char) ya /palette — fuzzy command picker
@@ -426,6 +427,15 @@ def main_loop():
             continue
         if task == "/dashboard":
             show_dashboard()
+            continue
+        if task.startswith("/lang"):
+            from ..i18n import set_lang, get_lang, LANGS
+            parts = task.split()
+            if len(parts) < 2:
+                console.print(f"[dim]Language: {get_lang()} ({'/'.join(LANGS)})[/]")
+                console.print(f"[dim]{_t('lang_use')}[/]")
+                continue
+            console.print(f"[green]{set_lang(parts[1])}[/]")
             continue
         if task == "/platform":
             from ..platform_adapt import capabilities as _caps
@@ -479,7 +489,7 @@ def main_loop():
             from ..memory.store import recent as _sr
             rows = _sr(10)
             if not rows:
-                console.print("[dim]Koi session nahi — pehla task chalao.[/]")
+                console.print(f"[dim]{_t('no_sessions')}[/]")
                 continue
             for i, (t, _s) in enumerate(rows, 1):
                 console.print(f"  {i}. {t[:60]}")
@@ -985,7 +995,7 @@ def main_loop():
                 try:
                     res = _run_with_live(t)
                 except KeyboardInterrupt:
-                    console.print("\n[yellow]Task roka (Ctrl+C) — partial state memory/backups me safe.[/]")
+                    console.print(f"\n[yellow]{_t('task_cancelled')}[/]")
                     break
                 show_result(res)
                 _done(t)
@@ -996,6 +1006,6 @@ def main_loop():
         try:
             res = _run_with_live(task)
         except KeyboardInterrupt:
-            console.print("\n[yellow]Task roka (Ctrl+C) — partial state memory/backups me safe.[/]")
+            console.print(f"\n[yellow]{_t('task_cancelled')}[/]")
             continue
         show_result(res)

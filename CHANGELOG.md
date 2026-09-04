@@ -1,6 +1,9 @@
 # Kaal Changelog
 
-## v0.6.0 — premium-tui batch (OpenCode-level)
+## v0.6.0 — smart-load batch (task-wise + i18n)
+- Added: lazy tool-spec — task ko sirf relevant tools (~60% context bachat, measured)
+- Added: i18n (hi/en/zh) + `/lang` — naya UI text `t()` se, Hindi default
+- Commands doc regen (40)
 - Added: `/dashboard` — status+sessions+keys side-by-side (narrow pe stacked)
 - Result footer me session spend + cache saved (cost transparency)
 - Commands doc regen (39), footer hint me /dashboard

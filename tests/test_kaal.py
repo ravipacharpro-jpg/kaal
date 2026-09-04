@@ -1201,6 +1201,51 @@ class TestPaletteSetup(unittest.TestCase):
             self.assertIn(k, d)
         show_dashboard()  # crash nahi hona chahiye
 
+    def test_lazy_spec(self):
+        from kaal.skills import tools as T
+        full = T.spec_text()
+        sub = T.spec_for("code me bug fix karo")
+        self.assertLess(len(sub), len(full))
+        self.assertIn("file_edit", sub)
+        self.assertNotIn("browser_fetch", sub)
+        sub2 = T.spec_for("github repo check karo")
+        self.assertIn("github_repo", sub2)
+        sub3 = T.spec_for("zxqv blorp")
+        self.assertIn("file_read", sub3)  # core fallback
+        est_save = 100 * (1 - len(sub) / len(full))
+        print(f"\nlazy-spec saves ~{est_save:.0f}% tool-context")
+        self.assertGreater(est_save, 40)
+
+    def test_i18n(self):
+        from kaal import i18n
+        import json as _js
+        import os as _os
+        tp = i18n._tui_file()
+        had = None
+        if _os.path.isfile(tp):
+            with open(tp, encoding="utf-8") as f:
+                had = f.read()
+        try:
+            i18n.set_lang("hi")
+            self.assertEqual(i18n.get_lang(), "hi")
+            self.assertIn("band", i18n.t("quit_short"))
+            self.assertEqual(i18n.t("no_such_key_xyz"), "no_such_key_xyz")
+            i18n.set_lang("en")
+            self.assertEqual(i18n.get_lang(), "en")
+            self.assertIn("closed", i18n.t("quit_short"))
+            i18n.set_lang("zh")
+            self.assertIn("预算", i18n.t("budget_title"))
+            self.assertIn("Use", i18n.set_lang("xx"))
+        finally:
+            if had is None:
+                try:
+                    _os.remove(tp)
+                except OSError:
+                    pass
+            else:
+                with open(tp, "w", encoding="utf-8") as f:
+                    f.write(had)
+
     def test_platform_matrix(self):
         from kaal import platform_adapt as pa
         self.assertIn(pa.detect(), ("termux", "linux", "macos", "windows"))
