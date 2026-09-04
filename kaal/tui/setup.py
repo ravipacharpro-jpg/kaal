@@ -5,7 +5,7 @@ GitHub token bhi isi vault me (LLM ko kabhi nahi dikhta — tools vault se lete 
 import os
 
 PROVIDERS = ["openai", "anthropic", "groq", "together", "mistral", "gemini",
-             "xai", "openrouter", "deepseek", "github"]
+             "xai", "openrouter", "deepseek", "kimi", "glm", "tongyi", "github"]
 
 def _marker():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..",

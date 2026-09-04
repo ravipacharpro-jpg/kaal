@@ -921,6 +921,92 @@ class TestKeyHealth(unittest.TestCase):
         self.assertEqual(rt.get_github_token(), "ghp-testtoken1234567890abcd")
 
 
+class TestUniversalSkills(unittest.TestCase):
+    """prompt.cpp universal skills: base registry, cache, zh-verify, reflect, CN, saver."""
+
+    def test_skill_registry(self):
+        from kaal.skills import base
+        base.REGISTRY.clear()
+        self.assertRaises(ValueError, base.register, {"desc": "no name"})
+        base.register({"name": "t1", "desc": "d",
+                       "on_task": lambda t: "note!",
+                       "on_result": lambda t, s: 1 / 0})
+        self.assertIn("t1", base.all_skills())
+        self.assertEqual(base.hook("on_task", "hi"), ["note!"])
+        self.assertEqual(base.hook("on_result", "a", "b"), [])  # fail-soft
+        self.assertEqual(base.hook("nope"), [])
+        base.REGISTRY.clear()
+
+    def test_promptcache_roundtrip(self):
+        from kaal.skills import promptcache as pc
+        import tempfile
+        old = pc.DB
+        pc.DB = tempfile.mktemp(suffix=".db")
+        try:
+            self.assertEqual(pc.lookup("q1"), (False, ""))
+            pc.store("q1", "a1", model="m")
+            self.assertEqual(pc.lookup("q1", model="m"), (True, "a1"))
+            self.assertEqual(pc.lookup("q1", model="other"), (False, ""))
+            n, s = pc.stats()
+            self.assertGreaterEqual(n, 1)
+            self.assertIn("clear", pc.clear().lower())
+        finally:
+            pc.DB = old
+
+    def test_zh_verify(self):
+        from kaal.skills import zhcomment as zh
+        code = "def f(x):\n return x + 1\n"
+        commented = "# 验证输入\ndef f(x):\n # 返回加一\n return x + 1\n"
+        changed = "def f(x):\n return x + 2\n"
+        self.assertTrue(zh.verify_unchanged(code, commented))
+        self.assertFalse(zh.verify_unchanged(code, changed))
+        self.assertIn("Chinese", zh.SYSTEM_ADD)
+
+    def test_reflect_save_load(self):
+        from kaal.skills import reflect as rf
+        p = rf.save("test reflection alpha beta")
+        self.assertTrue(p)
+        rows = rf.load_last(3)
+        self.assertTrue(any("alpha beta" in r for r in rows))
+        self.assertTrue(rf.search("alpha"))
+        self.assertIn("English", rf.build_reflection_prompt("t", "s"))
+
+    def test_cn_providers(self):
+        from kaal.models.router import PROVIDER_URLS, DEFAULT_MODELS
+        for prov, model in [("deepseek", "deepseek-chat"), ("kimi", "moonshot-v1-8k"),
+                            ("glm", "glm-4-plus"), ("tongyi", "qwen-max")]:
+            self.assertIn(prov, PROVIDER_URLS)
+            self.assertEqual(DEFAULT_MODELS[prov], model)
+            self.assertTrue(PROVIDER_URLS[prov].startswith("https://"))
+
+    def test_saver_gate(self):
+        from kaal.models import router as rt
+        import json as _js
+        self.assertIsInstance(rt.saver_active(), bool)
+        up = os.path.join("config", "endpoint_usage.json")
+        had = None
+        if os.path.isfile(up):
+            with open(up, encoding="utf-8") as f:
+                had = f.read()
+        try:
+            import datetime as _dt
+            with open(up, "w", encoding="utf-8") as f:
+                _js.dump({"date": _dt.date.today().isoformat(), "x": 4900}, f)
+            self.assertTrue(rt.saver_active())  # 98% → saver on
+            with open(up, "w", encoding="utf-8") as f:
+                _js.dump({"date": _dt.date.today().isoformat(), "x": 10}, f)
+            self.assertFalse(rt.saver_active())
+        finally:
+            if had is None:
+                try:
+                    os.remove(up)
+                except OSError:
+                    pass
+            else:
+                with open(up, "w", encoding="utf-8") as f:
+                    f.write(had)
+
+
 class TestSweDataset(unittest.TestCase):
     """SWE dataset runner: patch + grading + batch."""
 

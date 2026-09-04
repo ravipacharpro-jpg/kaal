@@ -160,6 +160,15 @@ def budget_status(daily_budget=5000):
     mode = "auto/fast (budget saver)" if pct >= 80 else "auto/smart"
     return {"used": used, "budget": daily_budget, "pct": pct, "mode": mode}
 
+def saver_active():
+    """80%+ budget used? Saver: sequential tools, chhota context (SKILL 6)."""
+    try:
+        from .. import config_store as _cs
+        daily, _ = _cs.get_budget()
+        return budget_status(daily).get("pct", 0) >= 80
+    except Exception:
+        return False
+
 PROVIDER_URLS = {
     "openai": "https://api.openai.com/v1",
     "anthropic": "https://api.anthropic.com/v1",
@@ -169,12 +178,18 @@ PROVIDER_URLS = {
     "mistral": "https://api.mistral.ai/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
     "xai": "https://api.x.ai/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+    "kimi": "https://api.moonshot.cn/v1",
+    "glm": "https://open.bigmodel.cn/api/paas/v4",
+    "tongyi": "https://dashscope.aliyuncs.com/compatible-mode/v1",
 }
 DEFAULT_MODELS = {
     "openai": "gpt-4o-mini", "openrouter": "auto",
     "groq": "llama-3.1-8b-instant", "together": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
     "mistral": "mistral-small-latest", "gemini": "gemini-2.0-flash",
     "xai": "grok-beta", "anthropic": "claude-3-5-haiku-latest",
+    "deepseek": "deepseek-chat", "kimi": "moonshot-v1-8k",
+    "glm": "glm-4-plus", "tongyi": "qwen-max",
 }
 
 MODEL_FILE = os.path.join(CONFIG_DIR, "model.json")
@@ -185,6 +200,7 @@ POPULAR_MODELS = [
     "meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct",
     "deepseek/deepseek-chat", "mistralai/mistral-small",
     "x-ai/grok-beta", "cohere/command-r-plus",
+    "deepseek/deepseek-chat", "moonshot-v1-8k", "glm-4-plus", "qwen-max",
 ]
 
 def get_model():
@@ -234,6 +250,16 @@ def _effort_params():
     t, n = EFFORTS[get_effort()]
     return {"temperature": t, "max_tokens": n, "num_predict": n}
 
+def _cache_store(prov, model, messages, txt, tokens):
+    """Success pe cache me dalo (fail-soft)."""
+    try:
+        from ..skills import promptcache as _pc
+        import json as _js
+        last = str(messages[-1].get("content", ""))[:1500] if messages else ""
+        _pc.store(last, txt, _js.dumps(messages[:-1])[:2000], model, tokens)
+    except Exception:
+        pass
+
 def _model_for(prov):
     m = get_model()
     return m if m != "auto" else DEFAULT_MODELS.get(prov, "auto")
@@ -263,6 +289,15 @@ def try_chat(messages, max_tokens_note=200, model=None):
         m = model if (model and model != "auto" and prov == "openrouter") else _model_for(prov)
         if model and model != "auto" and prov != "openrouter" and "/" in model:
             m = model  # user jaanta hai — bhej do, fail to next provider
+        try:
+            from ..skills import promptcache as _pc
+            import json as _js
+            _plast = str(messages[-1].get("content", ""))[:1500]
+            _hit, _cached = _pc.lookup(_plast, _js.dumps(messages[:-1])[:2000], m)
+            if _hit:
+                return f"{prov} (cache)", _cached
+        except Exception:
+            pass
         for k in keys:
             ent = _entry(k)
             key = ent.get("key") or ""
@@ -277,6 +312,7 @@ def try_chat(messages, max_tokens_note=200, model=None):
             note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got1[0] if got1 else max_tokens_note)
+                _cache_store(prov, m, messages, txt, got1[0] if got1 else 0)
                 return f"{prov}", txt
     return "rule-based", ""
 
@@ -514,6 +550,13 @@ def try_llm(prompt, max_tokens_note=100):
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
             continue
+        try:
+            from ..skills import promptcache as _pc2
+            _hit2, _cached2 = _pc2.lookup(prompt[:1500], "", _model_for(prov))
+            if _hit2:
+                return f"{prov} (cache)", _cached2
+        except Exception:
+            pass
         for k in keys:
             ent = _entry(k)
             key = ent.get("key") or ""
@@ -530,6 +573,9 @@ def try_llm(prompt, max_tokens_note=100):
             note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got3[0] if got3 else max_tokens_note)
+                _cache_store(prov, _model_for(prov),
+                             [{"role": "user", "content": prompt[:1500]}],
+                             txt, got3[0] if got3 else 0)
                 return f"{prov}", txt
     return "rule-based", ""
 

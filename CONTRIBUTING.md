@@ -18,3 +18,10 @@ python3 -m pytest tests/ -q   # 51 pass hone chahiye
 
 ## PR
 - Ek PR = ek logical change. Kya badla / kaise verify kiya / kya uncertain hai — likho.
+
+## Naya skill add karna (core extensible design)
+1. `kaal/skills/<name>.py` banao + `SKILL = {"name":..., "desc":..., "version":...}` rakho.
+2. Optional: `"tools": [{name, desc, params, fn}]` (brain auto-merge), `"commands": [...]` (palette docs), `"on_task"` / `"on_result"` hooks.
+3. Hooks fail-soft hone chahiye (exception = ignore). Koi hook kabhi crash nahi karega.
+4. Test `tests/test_kaal.py` me add karo. `python3 -m pytest tests/ -q` green rakho.
+5. Rules: code/identifiers English-only; comments kisi bhi language me. Secrets kabhi log/commit nahi.

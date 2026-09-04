@@ -703,7 +703,7 @@ def main_loop():
                         for r in rows:
                             console.print(f"  #{r['n']} {glyph.get(r['status'], '?')} "
                                           f"[dim]{r['masked']}[/] fails={r['fails']}")
-                console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai, github[/]")
+                console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai, deepseek, kimi, glm, tongyi, github[/]")
                 console.print("[dim]Use: /keys revive <provider> <n>[/]")
                 continue
             if len(parts) >= 4 and parts[1] == "revive":
@@ -789,6 +789,33 @@ def main_loop():
                 console.print("[dim]Use: /bg <task> — background + live-todo + beech me note/cancel[/]")
                 continue
             _run_bg(parts[1].strip())
+            continue
+        if task.startswith("/cache"):
+            from ..skills import promptcache as _pc
+            parts = task.split()
+            if len(parts) > 1 and parts[1] == "clear":
+                console.print(f"[green]{_pc.clear()}[/]")
+                continue
+            n, s = _pc.stats()
+            console.print(f"[dim]Prompt cache: {n} entries, ~{s} tokens saved (TTL 24h)[/]")
+            console.print("[dim]Use: /cache clear · off: economy.cache=false[/]")
+            continue
+        if task.startswith("/comment-zh"):
+            from ..skills import zhcomment as _zh
+            parts = task.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                console.print("[dim]Use: /comment-zh <file> — Chinese comments, code unchanged[/]")
+                continue
+            console.print(f"[green]{_zh.comment_file(parts[1].strip(), ask_cb=ask_main)}[/]")
+            continue
+        if task == "/reflect":
+            from ..skills import reflect as _rf
+            rows = _rf.load_last(5)
+            if not rows:
+                console.print("[dim]Koi reflection nahi — bada task chalao.[/]")
+                continue
+            for r in rows:
+                console.print(Panel(r[:400], border_style="dim", padding=(0, 1)))
             continue
         if task.startswith("/fresh"):
             from .. import workflows as _wf

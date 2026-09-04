@@ -1,6 +1,6 @@
 """Kaal ReAct loop + multi-agent orchestrator + economy. Summary only, no code dump."""
 from .models.router import select_endpoint, track_usage, budget_status, try_llm, brain_active
-from .models.router import session_over, session_used, session_cap
+from .models.router import session_over, session_used, session_cap, saver_active
 from .models import brain as _brain
 from .skills import files as _files
 from .skills import code as _code
@@ -190,6 +190,13 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
             live_cb("purana similar task mila — pattern use kar raha hu")
     except Exception:
         pass
+    try:
+        from .skills import base as _base
+        _snotes = _base.hook("on_task", task)
+        if _snotes:
+            hint = ((hint + " | ") if hint else "") + " | ".join(_snotes)[:300]
+    except Exception:
+        pass
     op = needs_permission(task)
     if op and not _cfg.check_perm(op,
                                   ask_cb, f"Sensitive lag raha hai ({op}): {task[:70]} — aage badhu?"):
@@ -233,6 +240,8 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         workers = CONCURRENCY.get(_plat(), 1)
     except Exception:
         workers = 1
+    if saver_active():
+        workers = 1  # saver mode: sequential tools (SKILL 6 cost opt)
     if use_multi and workers > 1 and len(todos) > 1 and not risky:
         if live_cb:
             live_cb(f"{len(todos)} agents parallel chal rahe hain")
@@ -304,6 +313,11 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         track_usage(ep["name"], 100 * max(1, len(todos)))
         _mem.save(task, base[:400])
         _pat.learn(task, base[:300])
+    except Exception:
+        pass
+    try:
+        from .skills import base as _base2
+        _base2.hook("on_result", task, base[:400])
     except Exception:
         pass
     daily, _per = _cfg.get_budget()

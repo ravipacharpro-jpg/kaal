@@ -205,6 +205,12 @@ def _load_plugins():
             BY_NAME.setdefault(t["name"], t)
     except Exception:
         pass
+    try:
+        from . import base as _base
+        for t in _base.skill_tools():
+            BY_NAME.setdefault(t["name"], t)
+    except Exception:
+        pass
 
 _load_plugins()
 

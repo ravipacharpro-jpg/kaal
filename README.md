@@ -41,11 +41,11 @@ TUI commands: `/palette` (Ctrl+P) `/setup` `/endpoints` `/budget` `/memory` `/ag
 ## Design (honest)
 - **TUI (Rich):** Todo auto `○/→/✓` + agent column, fixed 1-line live, summary only (code dump nahi)
 - **Brain 2 modes:** vault API key ho YA Ollama local chal raha ho to LLM tool-loop (26 tools, clarify+review, parallel reads, personas + few-shot + self-correction + streaming + context-compress + thread + USER/MEMORY); nahi to keyword rule path (fast, par AI nahi — seedha likha hai)
-- **Endpoints:** 20 configured targets; bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
+- **Endpoints:** 20 configured targets + deepseek/kimi/glm/tongyi (CN LLMs); bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
 - **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
 - **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
 - **Safety:** L1/L2/L3 autonomy (scheduled default L1 report-only, `--unattended` = L3), unattended auto-DENY, `[UNTRUSTED]` injection marking + prompt guard, AST sandbox, secret-scan pre-commit, vault 0600 + optional AES (`cryptography` ho to, PC pe), self-healing keys (3x auth-fail/quota → dead, `/keys revive`)
-- **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), repl (persistent audited namespace), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), vision, plugins
+- **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), repl (persistent audited namespace), prompt-cache (SHA-256 SQLite, TTL 24h), zh-comment (Chinese comments, code-verify), reflections (cross-session), browser (Playwright/HTTP), GitHub (vault token), git (commit+changelog+secret-scan), bash allowlist, project-detect (+AGENTS.md), code-search (BM25), vision, plugins (+Skill protocol: `SKILL` dict se naya skill bina core chhue)
 - **Multi-agent:** 5 personas + LLM role classify (brain mode), desktop pe parallel, Termux pe sequential
 - **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate, per-session cap (default 2000, brain auto-off)
 - **Memory:** SQLite + FTS patterns + TF-IDF ranked search + thread continuity + USER.md/MEMORY.md (editable) + auto-skills + PLAN.md + recipes + session export

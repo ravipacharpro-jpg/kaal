@@ -38,6 +38,9 @@ COMMANDS = [
     ("/recipe", "reusable workflows", None),
     ("/plugin", "plugins enable/disable", None),
     ("/voice", "mic input (Termux:API)", None),
+    ("/cache", "prompt cache stats/clear", ["clear"]),
+    ("/comment-zh <file>", "Chinese comments (code same)", None),
+    ("/reflect", "past reflections dekho", None),
     ("/quit", "band karo", None),
 ]
 

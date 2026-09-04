@@ -1,6 +1,13 @@
 # Kaal Changelog
 
-## v0.6.0 — palette/keys batch
+## v0.6.0 — universal-skills batch
+- Added: Skill protocol core (`skills/base.py` — register/hooks/tools-merge, fail-soft)
+- Added: prompt-cache (SHA-256 SQLite, TTL 24h, try_chat/try_llm wired, `/cache`)
+- Added: zh-comment (`/comment-zh`, code-unchanged verifier)
+- Added: reflections (session-end LLM summary, last-3 brain context, `/reflect`)
+- Added: CN providers — deepseek/kimi/glm/tongyi (URLs + models + setup + /key)
+- Added: saver gate (sequential tools at 80%+), English-only code rule in SYSTEM
+- Note: spec me SKILL 2 missing tha (1→3 jump) — kuch implement nahi kiya
 - Added: Command Palette (`/palette`, Ctrl+P) — fuzzy, nested, stdlib-only (termios/msvcrt)
 - Added: Setup tab (`/setup`, first-run auto) — masked key input, ping-test, github token in vault
 - Added: self-healing keys — fail_count/last_fail/status, quota-exceeded classify, 3x → dead + notice, `/keys revive`, health in `/keys list`
