@@ -171,7 +171,12 @@ def show_header():
     console.print(_Align.center("[dim]/agents  ctrl+p commands  /dashboard[/]"))
     console.print(f"[dim]{_status_strip()}[/]")
     console.print(Rule(style="dim"))
-    console.print(_Align.right(f"[dim]~  KAAL {_V}[/]"))
+    try:
+        from ..models.router import session_used as _su2, session_cap as _sc2
+        _sess = f"{_su2()}/{_sc2()} · "
+    except Exception:
+        _sess = ""
+    console.print(_Align.right(f"[dim]{_sess}~  KAAL {_V}[/]"))
     console.print(th.FOOTER_HINT + "\n")
 
 

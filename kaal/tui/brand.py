@@ -5,12 +5,12 @@ NAME = "kaal"
 VERSION = "v0.6.0"
 TAGLINE = "autonomous agent · ahead of time"
 
-BANNER = """[dim]       ◇      ◇      ◇
-       │      │      │
-[/dim][bold cyan]   ╭──────┬──────┬──────╮
-   │ THINK│ ACT  │VERIFY│
-   ╰──────┴──────┴──────╯[/]
-[dim]        ◉  KAAL · AHEAD OF TIME · {version}[/]""".format(version=VERSION)
+BANNER = """[dim]       ◇       ◇       ◇
+       │       │       │
+[/dim][bold cyan]   ╭───────┬───────┬───────╮
+   │ THINK │  ACT  │ VERIFY│
+   ╰───────┴───────┴───────╯[/]
+[dim]             ◉  KAAL · AHEAD OF TIME · {version}[/]""".format(version=VERSION)
 
 
 def agent_name():
