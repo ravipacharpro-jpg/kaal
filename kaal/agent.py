@@ -145,14 +145,19 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
             live_cb("brain active — model soch raha hu")
         try:
             _files.checkpoint("brain-start")
-        except Exception:
-            pass
+        except Exception as e:
+            _tr.warn(f"checkpoint fail: {e}", "brain-start")
         try:
             jobs = decompose(task, smart=True)
             todos, summary, ep_name = _brain.run(task, live_cb, ask_cb, jobs=jobs,
                                                  on_token=on_token,
                                                  ask_text_cb=ask_text_cb, level=level,
                                                  step_cb=step_cb, cancel=cancel, inbox=inbox)
+            if cancel is not None and cancel.is_set():
+                _log("brain", ep_name, todos, "cancelled")
+                return {"status": "cancelled", "summary": "User ne roka — " + (summary or "kuch nahi hua")[:350],
+                        "todos": todos, "endpoint": ep_name, "mode": "brain",
+                        "budget": ""}
             if summary:  # brain ne complete kiya
                 review_note = _self_review(task, summary)
                 if review_note:
@@ -205,9 +210,10 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
                 "todos": todos, "endpoint": ep["name"], "mode": "single"}
     try:
         _files.checkpoint("task-start")
-    except Exception:
-        pass
+    except Exception as e:
+        _tr.warn(f"checkpoint fail: {e}", "task-start")
     out = []
+    cancelled = False
 
     def _one(td):
         if cancel is not None and cancel.is_set():
@@ -247,10 +253,13 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         for line in run_graph(todos, _one, max_workers=workers, cancel=cancel):
             out.append(line)
             if line in ("cancelled", " delete cancel"):
+                if line == "cancelled":
+                    cancelled = True
                 break
     else:
         for i, td in enumerate(todos):
             if cancel is not None and cancel.is_set():
+                cancelled = True
                 out.append("cancelled by user")
                 break
             if inbox is not None:
@@ -309,13 +318,13 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         track_usage(ep["name"], 100 * max(1, len(todos)))
         _mem.save(task, base[:400])
         _pat.learn(task, base[:300])
-    except Exception:
-        pass
+    except Exception as e:
+        _tr.warn(f"persist fail: {e}", "task-end")
     try:
         from .skills import base as _base2
         _base2.hook("on_result", task, base[:400])
-    except Exception:
-        pass
+    except Exception as e:
+        _tr.warn(f"hook fail: {e}", "on_result")
     daily, _per = _cfg.get_budget()
     b = budget_status(daily)
     summ = (base + llm_note + rollback_note)[:450]
@@ -324,8 +333,11 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
     if hint:
         summ = f"{hint[:150]} | " + summ
     _observe("run_complete", task, base[:150])
-    _log("multi" if use_multi else "single", ep["name"], todos, "done")
-    return {"status": "done", "summary": summ,
+    _log("multi" if use_multi else "single", ep["name"], todos,
+         "cancelled" if cancelled else "done")
+    if cancelled:
+        summ = "User ne roka (cancelled) — " + (summ or "kuch nahi hua")
+    return {"status": "cancelled" if cancelled else "done", "summary": summ,
             "todos": todos, "endpoint": ep["name"],
             "mode": "multi" if use_multi else "single",
             "budget": f"{b['used']}/{daily} ({b['mode']})"}

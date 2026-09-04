@@ -1,5 +1,13 @@
 # Kaal Changelog
 
+## v0.6.0 — security-audit batch (K-01..K-06, external audit)
+- Fixed K-02 (High): symlink traversal — `_safe()` ab realpath-compare (read/write/edit verified-blocked)
+- Fixed K-01 (High): RPC `prompt/run` + `prompt/stream` session_id bind karte hain, unknown reject
+- Fixed K-03: cancel pe status `cancelled` (khali done-summary nahi)
+- Fixed K-04: LSP deterministic cleanup (terminate→wait→kill→close+wait)
+- Fixed K-05: `requirements-dev.txt` (pytest), harness me runner-missing ERROR
+- Fixed K-06: `trace.warn()` — checkpoint/persist/hook failures ab logged
+
 ## v0.6.0 — smart-load batch (task-wise + i18n)
 - Added: lazy tool-spec — task ko sirf relevant tools (~60% context bachat, measured)
 - Added: i18n (hi/en/zh) + `/lang` — naya UI text `t()` se, Hindi default

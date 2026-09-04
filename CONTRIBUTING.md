@@ -5,7 +5,8 @@
 git clone https://github.com/ravipacharpro-jpg/kaal.git
 cd kaal
 bash install/install.sh
-python3 -m pytest tests/ -q   # 51 pass hone chahiye
+pip install -r requirements-dev.txt   # pytest (K-05: runtime dep nahi, dev-only)
+python3 -m pytest tests/ -q   # 100+ pass hone chahiye
 ```
 
 ## Rules (short)

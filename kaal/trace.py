@@ -43,6 +43,15 @@ def recent(n=8):
     except Exception:
         return []
 
+def warn(msg, where=""):
+    """K-06: critical-path failures silently mat nigal — trace me warning likho.
+    Secrets kabhi mat likho (msg already redacted hona chahiye)."""
+    try:
+        log({"kind": "warning", "where": str(where)[:80],
+             "msg": str(msg)[:300]})
+    except Exception:
+        pass
+
 def record_observation(run_id, tool, args, result, level):
     """Per-tool-call observation (claude-mem PostToolUse style)."""
     log({"kind": "observation", "run": run_id, "tool": tool,

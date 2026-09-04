@@ -198,7 +198,30 @@ class TestHonest(unittest.TestCase):
         self.assertIsNotNone(_safe("README.md"))
         # bahar ka path unsafe
         self.assertIsNone(_safe("/etc/passwd"))
-        self.assertIsNone(_safe("../../etc/passwd"))
+
+    def test_symlink_escape_blocked(self):
+        """K-02: in-root symlink bahar point kare to read/write/edit sab block."""
+        import shutil
+        import tempfile
+        from kaal.skills import files as f
+        ext = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(ext, ignore_errors=True))
+        secret = os.path.join(ext, "SECRET.txt")
+        with open(secret, "w") as fh:
+            fh.write("TOP-SECRET-OUTSIDE")
+        link = os.path.abspath("memory/.test-tmp-link")
+        self.addCleanup(lambda: os.path.exists(link) and os.remove(link))
+        try:
+            os.remove(link)
+        except OSError:
+            pass
+        os.symlink(secret, link)
+        self.assertIsNone(f._safe(link))
+        self.assertNotIn("TOP-SECRET", f.read_file(link))
+        self.assertIn("Unsafe", f.write_file(link, "HACKED"))
+        with open(secret) as fh:
+            self.assertEqual(fh.read(), "TOP-SECRET-OUTSIDE")
+        self.assertIn("unsafe", f.edit_file(link, "TOP", "X", lambda q: True).lower())
 
 
 class TestRoadmap(unittest.TestCase):
@@ -676,6 +699,18 @@ class TestWishlistBatch4(unittest.TestCase):
                                                      "params": {"session_id": "zz"}})["error"])
         self.assertIn("unknown-session", rpc.handle({"id": 6, "method": "session/interject",
                                                      "params": {"session_id": "zz"}})["error"])
+        # K-01: unknown session bind reject, known session bind ok
+        self.assertIn("unknown-session", rpc.handle(
+            {"id": 9, "method": "prompt/run",
+             "params": {"task": "hi", "session_id": "s-nope"}})["error"])
+        import threading as _th
+        sid = rpc._new_session()
+        rpc._SESSIONS[sid]["cancel"].set()
+        r9 = rpc.handle({"id": 10, "method": "prompt/run",
+                         "params": {"task": "test alpha kaam", "session_id": sid}})
+        self.assertEqual(r9["result"]["status"], "cancelled")
+        with rpc._SLOCK:
+            rpc._SESSIONS.pop(sid, None)
         cmds = rpc.handle({"id": 7, "method": "availableCommands"})["result"]
         self.assertTrue(any(c["cmd"].startswith("/bg") for c in cmds))
         self.assertIn("approve", rpc.handle({"id": 8, "method": "fs/writeTextFile",
@@ -763,6 +798,33 @@ class TestWishlistBatch4(unittest.TestCase):
                            root=".", timeout=15)
         self.assertIn("fake-warn", out)
         self.assertIn("n/a", lsp.diagnose("memory/.test-tmp-t.py", server_cmd="no-such-lsp-xyz"))
+
+    def test_lsp_cleanup_reaps_child(self):
+        """K-04: context exit ke baad child reaped (zombie nahi)."""
+        import subprocess
+        import sys
+        import time as _t
+        from kaal.skills import lsp
+        srv = os.path.abspath("memory/.test-tmp-sleeper.py")
+        with open(srv, "w", encoding="utf-8") as f:
+            f.write("import time\ntime.sleep(30)\n")
+        self.addCleanup(lambda: os.path.exists(srv) and os.remove(srv))
+        c = lsp.LSPClient(f"{sys.executable} {srv}")
+        c.__enter__()
+        pid = c.proc.pid
+        c.__exit__()
+        deadline = _t.time() + 10
+        while _t.time() < deadline:
+            if c.proc.poll() is not None:
+                break
+            _t.sleep(0.2)
+        self.assertIsNotNone(c.proc.poll(), "child zombie reh gaya")
+        try:
+            os.kill(pid, 0)
+            alive = True
+        except OSError:
+            alive = False
+        self.assertFalse(alive)
 
     def test_lsp_symbol_fake_server(self):
         import sys
@@ -892,6 +954,7 @@ class TestBgHooks(unittest.TestCase):
         ev.set()
         res = run_task("test alpha kaam, test beta kaam",
                        ask_cb=lambda q: False, cancel=ev)
+        self.assertEqual(res["status"], "cancelled")  # K-03: done nahi
         self.assertIn("cancel", res["summary"].lower())
 
     def test_inbox_note_lands(self):

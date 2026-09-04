@@ -41,7 +41,11 @@ def run_instance(repo=".", base_commit="HEAD", test_cmd="python3 -m pytest -q", 
         try:
             r = subprocess.run(parts, cwd=wt, capture_output=True, text=True, timeout=timeout)
             tail = (r.stdout + r.stderr)[-1500:]
-            st = "PASS" if r.returncode == 0 else "FAIL"
+            if r.returncode != 0 and "No module named pytest" in tail:
+                st = "ERROR"
+                tail = "pytest installed nahi — pip install -r requirements-dev.txt. " + tail[-300:]
+            else:
+                st = "PASS" if r.returncode == 0 else "FAIL"
             return {"status": st, "output": tail, "secs": round(time.time() - t0, 2)}
         except subprocess.TimeoutExpired:
             return {"status": "ERROR", "output": f"Timeout {timeout}s", "secs": round(time.time() - t0, 2)}
@@ -62,6 +66,9 @@ def _run_cmd(wt, cmd, timeout):
         r = subprocess.run(parts, cwd=wt, capture_output=True, text=True,
                            timeout=timeout, env=env)
         tail = (r.stdout + r.stderr)[-1500:]
+        if r.returncode != 0 and "No module named pytest" in tail:
+            return "ERROR", ("pytest installed nahi — pip install -r requirements-dev.txt. "
+                             + tail[-300:])
         return ("PASS" if r.returncode == 0 else "FAIL"), tail
     except subprocess.TimeoutExpired:
         return "ERROR", f"Timeout {timeout}s"

@@ -46,6 +46,14 @@ def handle(req):
         task = str(p.get("task", ""))[:2000]
         if not task:
             return {"id": rid, "error": "empty-task"}
+        sid = p.get("session_id")
+        if sid is not None:  # K-01: supplied session bind karo, unknown reject
+            with _SLOCK:
+                s = _SESSIONS.get(str(sid))
+            if not s:
+                return {"id": rid, "error": f"unknown-session: {sid}"}
+            return {"id": rid, "result": _run_task(task, cancel=s["cancel"],
+                                                   inbox=s["inbox"])}
         return {"id": rid, "result": _run_task(task)}
     if m == "session/cancel":
         sid = str(p.get("session_id", ""))
@@ -108,10 +116,19 @@ def serve_stdio():
             sys.stdout.write(json.dumps(obj) + "\n")
             sys.stdout.flush()
 
-    def do_stream(rid, task):
-        sid = _new_session()
-        with _SLOCK:
-            s = _SESSIONS[sid]
+    def do_stream(rid, task, session_id=None):
+        if session_id is not None:
+            with _SLOCK:
+                s = _SESSIONS.get(str(session_id))
+            if not s:
+                emit({"id": rid, "error": f"unknown-session: {session_id}"})
+                return
+            sid, temp = str(session_id), False
+        else:
+            sid = _new_session()
+            temp = True
+            with _SLOCK:
+                s = _SESSIONS[sid]
         emit({"id": rid, "result": {"session_id": sid, "streaming": True}})
 
         def _tok(piece):
@@ -119,8 +136,9 @@ def serve_stdio():
 
         res = _run_task(task, cancel=s["cancel"], inbox=s["inbox"], on_token=_tok)
         emit({"id": rid, "event": "done", "result": res})
-        with _SLOCK:
-            _SESSIONS.pop(sid, None)
+        if temp:
+            with _SLOCK:
+                _SESSIONS.pop(sid, None)
 
     def do_run(rid, task):
         emit({"id": rid, "result": _run_task(task)})
@@ -141,7 +159,8 @@ def serve_stdio():
                 if not task:
                     emit({"id": req.get("id"), "error": "empty-task"})
                     continue
-                ex.submit(do_stream, req.get("id"), task)
+                ex.submit(do_stream, req.get("id"), task,
+                          (req.get("params") or {}).get("session_id"))
                 continue
             if m == "prompt/run":
                 task = str((req.get("params") or {}).get("task", ""))[:2000]

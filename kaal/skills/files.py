@@ -24,10 +24,14 @@ def _roots():
     return roots
 
 def _safe(path):
-    p = os.path.abspath(os.path.expanduser(path))
+    """Repo/CWD/HOME ke andar hi allow. realpath se resolve karke compare —
+    warna in-root symlink bahar point karke boundary bypass kar deta hai (K-02).
+    Returns resolved path ya None."""
+    p = os.path.realpath(os.path.expanduser(path))
     for r in _roots():
         try:
-            if os.path.commonpath([p, r]) == r:
+            rr = os.path.realpath(r)
+            if os.path.commonpath([p, rr]) == rr:
                 return p
         except ValueError:
             pass

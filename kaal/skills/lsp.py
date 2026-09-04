@@ -62,11 +62,39 @@ class LSPClient:
         return self
 
     def __exit__(self, *a):
+        # K-04: deterministic reaping — alag try/finally har step, hamesha wait().
         try:
             self.notify("exit", None)
-            self.proc.kill()
         except Exception:
             pass
+        finally:
+            try:
+                self.proc.stdin.close()
+            except Exception:
+                pass
+        try:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except Exception:
+                try:
+                    self.proc.kill()
+                except Exception:
+                    pass
+                try:
+                    self.proc.wait(timeout=5)
+                except Exception:
+                    pass
+        finally:
+            for fh in (self.proc.stdout, self.proc.stderr):
+                try:
+                    fh.close()
+                except Exception:
+                    pass
+            try:
+                self.proc.wait(timeout=5)
+            except Exception:
+                pass
         return False
 
     def _send(self, msg):
