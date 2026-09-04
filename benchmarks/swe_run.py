@@ -52,10 +52,15 @@ def run_instance(repo=".", base_commit="HEAD", test_cmd="python3 -m pytest -q", 
         shutil.rmtree(wt, ignore_errors=True)
 
 def _run_cmd(wt, cmd, timeout):
-    """Ek test command chalao → (PASS|FAIL|ERROR, tail)."""
+    """Ek test command chalao → (PASS|FAIL|ERROR, tail).
+    PYTHONDONTWRITEBYTECODE=1 taaki stale __pycache__ (same-size patch +
+    coarse mtime) post-patch run me purana bytecode na chalaye."""
     parts = cmd.split()[:12]
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     try:
-        r = subprocess.run(parts, cwd=wt, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(parts, cwd=wt, capture_output=True, text=True,
+                           timeout=timeout, env=env)
         tail = (r.stdout + r.stderr)[-1500:]
         return ("PASS" if r.returncode == 0 else "FAIL"), tail
     except subprocess.TimeoutExpired:
@@ -64,6 +69,13 @@ def _run_cmd(wt, cmd, timeout):
         return "ERROR", "test command nahi mili"
     except Exception as e:
         return "ERROR", f"Error: {e}"[:200]
+
+def _clear_pycache(wt):
+    """Worktree ke stale .pyc hatao (patch ke baad zaroori)."""
+    for dp, ds, fs in os.walk(wt):
+        if "__pycache__" in ds:
+            shutil.rmtree(os.path.join(dp, "__pycache__"), ignore_errors=True)
+            ds.remove("__pycache__")
 
 def apply_patch(wt, patch_text):
     """Unified diff worktree me lagao. Returns (ok, msg)."""
@@ -116,6 +128,7 @@ def grade_instance(inst, timeout=300):
         if not ok:
             return {"id": iid, "resolved": False, "status": "ERROR",
                     "detail": f"patch fail: {msg}", "pre": pre}
+        _clear_pycache(wt)  # stale bytecode guard (same-size patch + coarse mtime)
         post_f2p, post_p2p, outs = {}, {}, {}
         for cmd in f2p:
             st, tail = _run_cmd(wt, cmd, timeout)

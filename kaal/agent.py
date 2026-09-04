@@ -92,7 +92,12 @@ def _dispatch(step, live_cb, ask_cb, level=None, run_id=None):
         _mcp.load("github")
         parts = step.split()
         r = next((w for w in parts if "/" in w and "." not in w), "ravipacharpro-jpg/kaal")
-        res = _gh.repo_info(r)[:300]
+        try:
+            from .models.router import get_github_token
+            _tok = get_github_token()
+        except Exception:
+            _tok = ""
+        res = _gh.repo_info(r, _tok)[:300]
         _observe("github_repo", step, res[:80]); return res
     if "browser" in s or "site" in s or "web" in s or "http" in s:
         if live_cb: live_cb("abhi browser se fetch kar raha hu")

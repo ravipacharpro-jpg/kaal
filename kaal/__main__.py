@@ -105,6 +105,15 @@ def main():
     else:
         from .tui.app import main_loop
         try:
+            import sys as _sys
+            if _sys.stdin.isatty():
+                from .tui.setup import needs_onboarding, run_setup
+                if needs_onboarding():
+                    console.print("[dim]Pehli baar? Setup khol raha hu (skip: Ctrl+C).[/]")
+                    try:
+                        run_setup()
+                    except KeyboardInterrupt:
+                        console.print("[dim]Setup skip.[/]")
             main_loop()
         except KeyboardInterrupt:
             pass

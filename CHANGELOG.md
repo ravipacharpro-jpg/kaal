@@ -1,6 +1,12 @@
 # Kaal Changelog
 
-## v0.6.0 — SWE dataset batch
+## v0.6.0 — palette/keys batch
+- Added: Command Palette (`/palette`, Ctrl+P) — fuzzy, nested, stdlib-only (termios/msvcrt)
+- Added: Setup tab (`/setup`, first-run auto) — masked key input, ping-test, github token in vault
+- Added: self-healing keys — fail_count/last_fail/status, quota-exceeded classify, 3x → dead + notice, `/keys revive`, health in `/keys list`
+- Fixed: GitHub token ab vault se (LLM-provided token ignore)
+- Added: `/theme` (live accent + persist), `/session` (list/resume)
+- Fixed: SWE harness stale-`__pycache__` flake (PYTHONDONTWRITEBYTECODE + clear)
 - Added: SWE dataset runner — patch apply, FAIL_TO_PASS/PASS_TO_PASS grading, batch + CLI (`benchmarks/swe_run.py dataset.json`)
 - Hardened: worktree retry + prune (slow-storage git flakes)
 - Note: suite me rare environmental flake (~1/8 runs, SWE worktree tests) — retry se mitigated, root cause still under watch

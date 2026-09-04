@@ -264,20 +264,20 @@ def try_chat(messages, max_tokens_note=200, model=None):
         if model and model != "auto" and prov != "openrouter" and "/" in model:
             m = model  # user jaanta hai — bhej do, fail to next provider
         for k in keys:
-            key = k.get("key") if isinstance(k, dict) else k
-            if not key:
-                continue
+            ent = _entry(k)
+            key = ent.get("key") or ""
+            if not key or ent.get("status") == "dead":
+                continue  # dead keys rotation se bahar
             if _cool(str(key)) > _t.time():
                 continue  # rate-limit cooldown me hai — next key
             got1 = []
             ep1 = _effort_params()
             ok, txt = chat(url, key, m, messages, usage_cb=lambda n: got1.append(n),
                            temperature=ep1["temperature"], max_tokens=ep1["max_tokens"])
+            note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got1[0] if got1 else max_tokens_note)
                 return f"{prov}", txt
-            if txt.startswith("rate-limit:"):
-                _cool(str(key), 60)
     return "rule-based", ""
 
 def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
@@ -307,8 +307,9 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
         if model and model != "auto" and prov != "openrouter" and "/" in model:
             m = model
         for k in keys:
-            key = k.get("key") if isinstance(k, dict) else k
-            if not key:
+            ent = _entry(k)
+            key = ent.get("key") or ""
+            if not key or ent.get("status") == "dead":
                 continue
             if _cool(str(key)) > _t.time():
                 continue
@@ -318,14 +319,141 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
                                   usage_cb=lambda n: got2.append(n),
                                   temperature=ep2["temperature"],
                                   max_tokens=ep2["max_tokens"])
+            note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got2[0] if got2 else max_tokens_note)
                 return f"{prov}", txt
-            if txt.startswith("rate-limit:"):
-                _cool(str(key), 60)
     return "rule-based", ""
 
 _COOL = {}
+
+_NOTICES = []
+DEAD_AFTER_FAILS = 3
+
+def pop_notices():
+    """TUI notifications (dead-key alerts) lao + clear karo."""
+    out = list(_NOTICES)
+    del _NOTICES[:]
+    return out
+
+def _entry(k):
+    """Key entry normalize karo (legacy string/plain-dict safe).
+    Shape: {key, fail_count, last_fail, status}."""
+    if isinstance(k, dict):
+        d = dict(k)
+    else:
+        d = {"key": k}
+    d.setdefault("fail_count", 0)
+    d.setdefault("last_fail", None)
+    d.setdefault("status", "active")
+    try:
+        d["fail_count"] = int(d.get("fail_count") or 0)
+    except Exception:
+        d["fail_count"] = 0
+    if d.get("status") not in ("active", "cooldown", "dead"):
+        d["status"] = "active"
+    return d
+
+def _save_vault_map(vault):
+    """Vault map persist karo (encrypt-aware) + 0600. Returns mode str."""
+    mode = "plaintext+0600"
+    try:
+        from .. import vault_crypto as _vc
+        ok, payload = _vc.encrypt_dict(vault)
+        if ok:
+            with open(VAULT, "w", encoding="utf-8") as f:
+                f.write(payload)
+            mode = "encrypted"
+        else:
+            raise RuntimeError("no-crypto")
+    except Exception:
+        with open(VAULT, "w", encoding="utf-8") as f:
+            json.dump(vault, f, indent=2)
+    try:
+        os.chmod(VAULT, 0o600)
+    except OSError:
+        pass
+    return mode
+
+def _find_entry(vault, provider, key):
+    for i, k in enumerate(vault.get("providers", {}).get(provider, []) or []):
+        e = _entry(k)
+        if e.get("key") == key:
+            return i, e
+    return None, None
+
+def note_key_result(provider, key, ok, err=""):
+    """Rotation health update. rate-limit → 60s cooldown (count nahi).
+    auth-fail/quota-exceeded → fail_count++ (consecutive); 3 pe dead + notice.
+    success → count reset. Vault persist hota hai."""
+    import time as _t
+    try:
+        vault = _load_vault()
+        idx, ent = _find_entry(vault, provider, key)
+        if ent is None:
+            return
+        err = str(err or "")
+        if ok:
+            ent["fail_count"] = 0
+            ent["last_fail"] = None
+            if ent["status"] == "cooldown":
+                ent["status"] = "active"
+        elif err.startswith("rate-limit:"):
+            _cool(str(key), 60)
+            ent["status"] = "cooldown"
+        elif err.startswith("auth-fail:") or err.startswith("quota-exceeded:"):
+            ent["fail_count"] = ent.get("fail_count", 0) + 1
+            ent["last_fail"] = _t.time()
+            if ent["fail_count"] >= DEAD_AFTER_FAILS and ent["status"] != "dead":
+                ent["status"] = "dead"
+                n = idx + 1
+                _NOTICES.append(
+                    f" {provider} key #{n} dead ho gayi "
+                    f"({'quota' if err.startswith('quota') else 'auth-fail'}, "
+                    f"{ent['fail_count']}x fail) — rotation se bahar. "
+                    f"/keys revive {provider} {n} se wapas lao.")
+        vault["providers"][provider][idx] = ent
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        _save_vault_map(vault)
+    except Exception:
+        pass
+
+def revive_key(provider, n):
+    """Dead/cooldown key wapas active karo (1-based index)."""
+    try:
+        vault = _load_vault()
+        lst = vault.get("providers", {}).get(provider, []) or []
+        i = int(n) - 1
+        if i < 0 or i >= len(lst):
+            return f"Key #{n} nahi mili ({provider}: {len(lst)} keys)"
+        ent = _entry(lst[i])
+        ent["fail_count"] = 0
+        ent["last_fail"] = None
+        ent["status"] = "active"
+        vault["providers"][provider][i] = ent
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        _save_vault_map(vault)
+        return f"{provider} key #{n} revive ho gayi (active)"
+    except Exception as e:
+        return f"Revive fail: {e}"[:150]
+
+def key_health(provider=""):
+    """{provider: [{n, masked, status, fails}]} — /keys list ke liye."""
+    vault = _load_vault()
+    out = {}
+    for prov, keys in (vault.get("providers") or {}).items():
+        if provider and prov != provider:
+            continue
+        rows = []
+        for i, k in enumerate(keys or [], 1):
+            e = _entry(k)
+            key = str(e.get("key") or "")
+            rows.append({"n": i,
+                         "masked": key[:6] + "..." + key[-4:] if len(key) > 12 else "***",
+                         "status": e.get("status", "active"),
+                         "fails": e.get("fail_count", 0)})
+        out[prov] = rows
+    return out
 
 _SESSION = {"tokens": 0}
 
@@ -387,8 +515,9 @@ def try_llm(prompt, max_tokens_note=100):
         if not url or not isinstance(keys, list):
             continue
         for k in keys:
-            key = k.get("key") if isinstance(k, dict) else k
-            if not key:
+            ent = _entry(k)
+            key = ent.get("key") or ""
+            if not key or ent.get("status") == "dead":
                 continue
             if _cool(str(key)) > _t.time():
                 continue
@@ -398,11 +527,10 @@ def try_llm(prompt, max_tokens_note=100):
                            [{"role": "user", "content": prompt[:1500]}],
                            usage_cb=lambda n: got3.append(n),
                            temperature=ep3["temperature"], max_tokens=ep3["max_tokens"])
+            note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got3[0] if got3 else max_tokens_note)
                 return f"{prov}", txt
-            if txt.startswith("rate-limit:"):
-                _cool(str(key), 60)
     return "rule-based", ""
 
 def try_vision(prompt, b64, mime="image/png"):
@@ -415,17 +543,19 @@ def try_vision(prompt, b64, mime="image/png"):
         if not url or not isinstance(keys, list):
             continue
         for k in keys:
-            key = k.get("key") if isinstance(k, dict) else k
-            if not key or _cool(str(key)) > _t.time():
+            ent = _entry(k)
+            key = ent.get("key") or ""
+            if not key or ent.get("status") == "dead":
+                continue
+            if _cool(str(key)) > _t.time():
                 continue
             got = []
             ok, txt = chat_vision(url, key, _model_for(prov), prompt, b64, mime,
                                   usage_cb=lambda n: got.append(n))
+            note_key_result(prov, key, ok, txt)
             if ok:
                 track_usage(f"{prov}/key", got[0] if got else 300)
                 return f"{prov}", txt
-            if txt.startswith("rate-limit:"):
-                _cool(str(key), 60)
     return "rule-based", ""
 
 def estimate(task, steps=3):
@@ -444,39 +574,32 @@ def estimate(task, steps=3):
 
 def add_user_key(provider, key):
     """User ki unlimited API add karo — same provider ki multiple allowed.
-    cryptography mili to AES-encrypted vault, nahi to plaintext + 0600."""
+    Entry shape: {key, fail_count, last_fail, status}. cryptography mili to
+    AES-encrypted vault, nahi to plaintext + 0600."""
     os.makedirs(CONFIG_DIR, exist_ok=True)
     vault = _load_vault()
-    vault.setdefault("providers", {}).setdefault(provider, []).append({"key": key})
-    mode = "plaintext+0600"
-    try:
-        from .. import vault_crypto as _vc
-        ok, payload = _vc.encrypt_dict(vault)
-        if ok:
-            with open(VAULT, "w", encoding="utf-8") as f:
-                f.write(payload)
-            mode = "encrypted"
-        else:
-            raise RuntimeError("no-crypto")
-    except Exception:
-        with open(VAULT, "w", encoding="utf-8") as f:
-            json.dump(vault, f, indent=2)
-    try:
-        os.chmod(VAULT, 0o600)
-    except OSError:
-        pass
+    vault.setdefault("providers", {}).setdefault(provider, []).append(
+        {"key": key, "fail_count": 0, "last_fail": None, "status": "active"})
+    mode = _save_vault_map(vault)
     n = len(vault['providers'][provider])
     return f"{provider} key add ho gayi ({n} total, {mode})"
 
 def vault_summary():
     """Vault ka masked summary: {provider: ['sk-ab12...wxyz', ...]}. Keys kabhi poori nahi."""
-    vault = _load_vault()
     out = {}
-    for prov, keys in (vault.get("providers") or {}).items():
-        masked = []
-        for k in (keys or []):
-            key = k.get("key") if isinstance(k, dict) else k
-            key = str(key or "")
-            masked.append(key[:6] + "..." + key[-4:] if len(key) > 12 else "***")
-        out[prov] = masked
+    for prov, rows in key_health().items():
+        out[prov] = [r["masked"] for r in rows]
     return out
+
+def get_github_token():
+    """Vault se pehli active github key lao (token LLM ko kabhi nahi dikhta).
+    Nahi mili to '' (unauthenticated, rate-limit kam)."""
+    try:
+        vault = _load_vault()
+        for k in (vault.get("providers") or {}).get("github", []) or []:
+            e = _entry(k)
+            if e.get("status") != "dead" and e.get("key"):
+                return str(e["key"])
+    except Exception:
+        pass
+    return ""

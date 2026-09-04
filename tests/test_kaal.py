@@ -858,6 +858,69 @@ class TestBgHooks(unittest.TestCase):
             rt.VAULT, rt.CONFIG_DIR = old_v, old_c
 
 
+class TestKeyHealth(unittest.TestCase):
+    """Self-healing rotation: count, dead, revive, cooldown, quota."""
+
+    def _iso_vault(self):
+        import tempfile
+        from kaal.models import router as rt
+        d = tempfile.mkdtemp()
+        old_v, old_c = rt.VAULT, rt.CONFIG_DIR
+        rt.VAULT, rt.CONFIG_DIR = os.path.join(d, "vault.json"), d
+        rt._NOTICES.clear()
+        self.addCleanup(lambda: setattr(rt, "VAULT", old_v))
+        self.addCleanup(lambda: setattr(rt, "CONFIG_DIR", old_c))
+        self.addCleanup(rt._NOTICES.clear)
+        return rt
+
+    def test_dead_after_3_auth_fails(self):
+        rt = self._iso_vault()
+        rt.add_user_key("groq", "gsk-testkey1234567890abcdef")
+        for _ in range(3):
+            rt.note_key_result("groq", "gsk-testkey1234567890abcdef", False, "auth-fail: 401 xxx")
+        h = rt.key_health("groq")["groq"][0]
+        self.assertEqual(h["status"], "dead")
+        self.assertEqual(h["fails"], 3)
+        notes = rt.pop_notices()
+        self.assertTrue(any("dead" in n for n in notes))
+        self.assertEqual(rt.pop_notices(), [])
+
+    def test_rate_limit_no_count(self):
+        rt = self._iso_vault()
+        rt.add_user_key("groq", "gsk-ratelimitkey1234567890")
+        for _ in range(5):
+            rt.note_key_result("groq", "gsk-ratelimitkey1234567890", False, "rate-limit: 429 slow")
+        h = rt.key_health("groq")["groq"][0]
+        self.assertEqual(h["status"], "cooldown")
+        self.assertEqual(h["fails"], 0)
+
+    def test_success_resets_and_revive(self):
+        rt = self._iso_vault()
+        rt.add_user_key("groq", "gsk-revivekey1234567890ab")
+        rt.note_key_result("groq", "gsk-revivekey1234567890ab", False, "auth-fail: 401")
+        rt.note_key_result("groq", "gsk-revivekey1234567890ab", True)
+        h = rt.key_health("groq")["groq"][0]
+        self.assertEqual((h["status"], h["fails"]), ("active", 0))
+        for _ in range(3):
+            rt.note_key_result("groq", "gsk-revivekey1234567890ab", False, "quota-exceeded: out")
+        self.assertEqual(rt.key_health("groq")["groq"][0]["status"], "dead")
+        self.assertIn("revive", rt.revive_key("groq", 1))
+        self.assertEqual(rt.key_health("groq")["groq"][0]["status"], "active")
+        self.assertIn("nahi mili", rt.revive_key("groq", 9))
+
+    def test_classify_quota(self):
+        from kaal.models import llm as _llm
+        self.assertTrue(_llm._classify_err(Exception("429 quota exceeded")).startswith("quota-exceeded:"))
+        self.assertTrue(_llm._classify_err(Exception("429 slow down")).startswith("rate-limit:"))
+        self.assertTrue(_llm._classify_err(Exception("401 bad")).startswith("auth-fail:"))
+
+    def test_github_token_from_vault(self):
+        rt = self._iso_vault()
+        self.assertEqual(rt.get_github_token(), "")
+        rt.add_user_key("github", "ghp-testtoken1234567890abcd")
+        self.assertEqual(rt.get_github_token(), "ghp-testtoken1234567890abcd")
+
+
 class TestSweDataset(unittest.TestCase):
     """SWE dataset runner: patch + grading + batch."""
 
@@ -924,6 +987,38 @@ class TestSweDataset(unittest.TestCase):
         done, total = run_dataset(fp, timeout=120)
         self.assertEqual(total, 2)
         self.assertEqual(done, 1)
+
+
+class TestPaletteSetup(unittest.TestCase):
+    """Palette fuzzy + setup helpers + theme accent."""
+
+    def test_fuzzy(self):
+        from kaal.tui.palette import fuzzy_match, filter_commands
+        self.assertIsNotNone(fuzzy_match("mdl", "/model default model"))
+        self.assertIsNone(fuzzy_match("zzz", "/model default"))
+        self.assertEqual(fuzzy_match("", "anything"), 0)
+        cmds = filter_commands("effort")
+        self.assertTrue(cmds and cmds[0][0] == "/effort")
+        cmds2 = filter_commands("")
+        self.assertGreater(len(cmds2), 30)
+
+    def test_setup_helpers(self):
+        from kaal.tui import setup as su
+        self.assertIn("openai", su.PROVIDERS)
+        self.assertIn("github", su.PROVIDERS)
+        ok, msg = su.ping_key("openai", "")
+        self.assertFalse(ok)
+        ok2, _ = su.ping_key("nosuchprov", "sk-x")
+        self.assertFalse(ok2)
+
+    def test_theme_accent(self):
+        from kaal.tui import theme as th
+        old = th.ACCENT
+        try:
+            th.ACCENT = "cyan"
+            self.assertEqual(th.load_accent(), th.ACCENT)
+        finally:
+            th.ACCENT = old
 
 
 if __name__ == "__main__":

@@ -192,6 +192,12 @@ def show_result(res):
     else:
         console.print(todos)
         console.print(result)
+    try:
+        from ..models.router import pop_notices
+        for _n in pop_notices():
+            console.print(f"[bold yellow]{_n[:200]}[/]")
+    except Exception:
+        pass
     console.print(Rule(style="dim"))
 
 
@@ -295,6 +301,10 @@ def _run_with_live(task):
 
 
 def main_loop():
+    try:
+        th.load_accent()
+    except Exception:
+        pass
     show_header()
     while True:
         try:
@@ -307,8 +317,91 @@ def main_loop():
         if task in ("/quit", "/q", "quit"):
             console.print("[yellow]Kaal band.[/]")
             break
+        if task in ("\x10", "/palette"):
+            # Ctrl+P (raw \x10 char) ya /palette — fuzzy command picker
+            from . import palette as _pal
+            sel = _pal.open_palette()
+            if not sel:
+                continue
+            import re as _re
+            if "<" in sel and ">" in sel:
+                base = sel.split("<")[0].strip()
+                try:
+                    arg = Prompt.ask(f"[dim]{base} arg[/]").strip()
+                except (EOFError, KeyboardInterrupt):
+                    continue
+                if not arg:
+                    continue
+                task = f"{base} {arg}"
+            else:
+                task = sel
+            if task.startswith("/"):
+                pass  # neeche command dispatch me jayega
+            else:
+                res = _run_with_live(task)
+                show_result(res)
+                continue
         if task == "/endpoints":
             show_endpoints()
+            continue
+        if task == "/theme":
+            from . import theme as _thm
+            console.print(f"[dim]Accent: {_thm.ACCENT} — use: /theme cyan|green|magenta|yellow[/]")
+            continue
+        if task.startswith("/theme"):
+            from . import theme as _thm2
+            import json as _js2
+            name = task.split()[1].lower() if len(task.split()) > 1 else ""
+            if name not in ("cyan", "green", "magenta", "yellow", "red", "blue"):
+                console.print("[dim]Use: /theme cyan|green|magenta|yellow|red|blue[/]")
+                continue
+            _thm2.ACCENT = name
+            try:
+                import os as _os2
+                tp = _os2.path.abspath(_os2.path.join(
+                    _os2.path.dirname(__file__), "..", "..", "config", "tui.json"))
+                d = {}
+                try:
+                    with open(tp, encoding="utf-8") as _f:
+                        d = _js2.load(_f)
+                except Exception:
+                    pass
+                d["accent"] = name
+                _os2.makedirs(_os2.path.dirname(tp), exist_ok=True)
+                with open(tp, "w", encoding="utf-8") as _f:
+                    _js2.dump(d, _f, indent=2)
+            except Exception:
+                pass
+            console.print(f"[green]Theme accent: {name} (tui.json me saved)[/]")
+            continue
+        if task == "/session":
+            from ..memory.store import recent as _sr
+            rows = _sr(10)
+            if not rows:
+                console.print("[dim]Koi session nahi — pehla task chalao.[/]")
+                continue
+            for i, (t, _s) in enumerate(rows, 1):
+                console.print(f"  {i}. {t[:60]}")
+            console.print("[dim]Use: /session <n> — nth resume[/]")
+            continue
+        if task.startswith("/session"):
+            from ..memory.store import recent as _sr2
+            parts = task.split()
+            try:
+                n = int(parts[1]) - 1
+                rows = _sr2(10)
+                if 0 <= n < len(rows):
+                    console.print(f"↩ Resume: {rows[n][0][:80]}")
+                    res = _run_with_live(rows[n][0])
+                    show_result(res)
+                    continue
+            except Exception:
+                pass
+            console.print("[dim]Use: /session <n>[/]")
+            continue
+        if task == "/setup" or task.startswith("/setup"):
+            from . import setup as _su
+            _su.run_setup()
             continue
         if task == "/budget":
             show_budget()
@@ -598,17 +691,26 @@ def main_loop():
                 console.print(f"[green]{result}[/]")
                 continue
             if len(parts) >= 2 and parts[1] == "list":
-                from ..models.router import vault_summary as _vs
-                summ = _vs()
-                if not summ:
+                from ..models.router import key_health as _kh
+                health = _kh()
+                if not health:
                     console.print("[dim]No API keys configured yet. Use: /keys add <provider> <key>[/]")
                 else:
-                    for prov, keys in summ.items():
-                        console.print(f"[bold]{prov}[/] ({len(keys)}): " +
-                                      ", ".join(f"[dim]{k}[/]" for k in keys))
-                console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai[/]")
+                    glyph = {"active": "[green]✅[/]", "cooldown": "[yellow]⚠️[/]",
+                             "dead": "[red]❌[/]"}
+                    for prov, rows in health.items():
+                        console.print(f"[bold]{prov}[/] ({len(rows)}):")
+                        for r in rows:
+                            console.print(f"  #{r['n']} {glyph.get(r['status'], '?')} "
+                                          f"[dim]{r['masked']}[/] fails={r['fails']}")
+                console.print("[dim]Providers: openai, anthropic, openrouter, groq, together, mistral, gemini, xai, github[/]")
+                console.print("[dim]Use: /keys revive <provider> <n>[/]")
                 continue
-            console.print("[dim]Usage: /keys add <provider> <key> | /keys list[/]")
+            if len(parts) >= 4 and parts[1] == "revive":
+                from ..models.router import revive_key as _rk
+                console.print(f"[green]{_rk(parts[2], parts[3])}[/]")
+                continue
+            console.print("[dim]Usage: /keys add <provider> <key> | /keys list | /keys revive <provider> <n>[/]")
             continue
         if task.startswith("/effort"):
             parts = task.split()

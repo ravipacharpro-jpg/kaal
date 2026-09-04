@@ -49,12 +49,20 @@ def _t_browser_fetch(a):
     out = _b.fetch_text(a.get("url", ""))[:1400]
     return _untrusted(out)
 
+def _vault_token():
+    """GitHub token vault se — LLM diya token IGNORE (secret LLM context me nahi tairna chahiye)."""
+    try:
+        from ..models.router import get_github_token
+        return get_github_token()
+    except Exception:
+        return ""
+
 def _t_github_repo(a):
-    out = _gh.repo_info(a.get("repo", ""), a.get("token", ""))[:400]
+    out = _gh.repo_info(a.get("repo", ""), _vault_token())[:400]
     return _untrusted(out)
 
 def _t_github_issues(a):
-    out = _gh.list_issues(a.get("repo", ""), a.get("token", ""))[:500]
+    out = _gh.list_issues(a.get("repo", ""), _vault_token())[:500]
     return _untrusted(out)
 
 def _t_memory_recall(a):

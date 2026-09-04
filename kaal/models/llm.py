@@ -60,9 +60,11 @@ def chat_vision(endpoint_url, api_key, model, prompt, b64, mime="image/png",
 def _classify_err(e):
     s = str(e)[:150]
     low = s.lower()
+    if "quota" in low or "insufficient" in low or "credit" in low and "balance" in low:
+        return "quota-exceeded: " + s
     if "429" in s or "rate" in low and "limit" in low or "too many" in low:
         return "rate-limit: " + s
-    if "401" in s or "unauthorized" in low or "invalid" in low and "key" in low:
+    if "401" in s or "403" in s or "unauthorized" in low or "invalid" in low and "key" in low:
         return "auth-fail: " + s
     return s
 

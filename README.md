@@ -30,7 +30,7 @@ kaal --resume                          # last task dobara chalao
 kaal --schedule                        # due scheduled jobs chalao
 ```
 
-TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
+TUI commands: `/palette` (Ctrl+P) `/setup` `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effort` `/ollama` `/schedule` `/perm` `/plan` `/approve` `/review` `/research` `/bg` `/fresh` `/ship` `/autopilot` `/theme` `/session` `/checkpoint` `/rewind` `/tree` `/trace` `/thread` `/export` `/sandbox` `/quit`
 
 ```bash
 /key openai sk-...          # unlimited API add (same provider multiple allowed)
@@ -44,7 +44,7 @@ TUI commands: `/endpoints` `/budget` `/memory` `/agents` `/key` `/model` `/effor
 - **Endpoints:** 20 configured targets; bina key wale call nahi hote (sirf list) — key `/key` se add karo ya Ollama chalao. `ollama_local` hi real keyless hai.
 - **Routing:** keyword classify + specialist personas; reasoning LLM karta hai, router nahi
 - **Sandbox:** AST-verified (import/open/eval/dunder block) + optional docker (PC). OS-level boundary nahi — sensitive machine pe `/perm` tight rakho.
-- **Safety:** L1/L2/L3 autonomy (scheduled default L1 report-only, `--unattended` = L3), unattended auto-DENY, `[UNTRUSTED]` injection marking + prompt guard, AST sandbox, secret-scan pre-commit, vault 0600 + optional AES (`cryptography` ho to, PC pe)
+- **Safety:** L1/L2/L3 autonomy (scheduled default L1 report-only, `--unattended` = L3), unattended auto-DENY, `[UNTRUSTED]` injection marking + prompt guard, AST sandbox, secret-scan pre-commit, vault 0600 + optional AES (`cryptography` ho to, PC pe), self-healing keys (3x auth-fail/quota → dead, `/keys revive`)
 - **Skills:** files (backup STACK + undo N + checkpoints + fuzzy + syntax-verify + highlighted diff), code (AST sandbox/docker), repl (persistent audited namespace), browser (Playwright/HTTP), GitHub, git (commit+changelog+secret-scan), bash allowlist, project-detect, code-search (BM25), vision, plugins
 - **Multi-agent:** 5 personas + LLM role classify (brain mode), desktop pe parallel, Termux pe sequential
 - **Economy:** REAL token counts (API usage field), 80% pe saver mode, rate-limit rotation, pre-run estimate, per-session cap (default 2000, brain auto-off)
@@ -69,5 +69,5 @@ config/ install/ memory/ logs/
 ```
 
 ## Status
-v0.6.0 — maintenance batch in. Tests 74 pass + benchmark 12/12 (hermetic).
+v0.6.0 — palette/keys batch in. Tests 85 pass + benchmark 12/12 (hermetic).
 Verify: `kaal "file read README.md"`.
