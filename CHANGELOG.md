@@ -1,6 +1,10 @@
 # Kaal Changelog
 
-## v0.6.0 — acp/lsp batch (PC track)
+## v0.6.0 — platform-matrix batch (chhota kam, bada zyada)
+- Added: capability matrix + live binary probes (`platform_adapt.capabilities()`)
+- Added: `/platform` command (matrix + probes table)
+- Index cap: Termux 60 files, PC 200 (OOM guard)
+- README me platform matrix table
 - RPC extended: prompt/stream (chunks), session/cancel + interject (worker threads), fs read/write (approve-gated), availableCommands
 - LSP: hover/definition via generic stdio client + `/lsp diag|hover|def` (py_compile fallback)
 - Palette + footer me `/lsp`

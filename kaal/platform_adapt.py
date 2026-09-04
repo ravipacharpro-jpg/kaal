@@ -17,6 +17,46 @@ def detect():
 
 CONCURRENCY = {"termux": 1, "linux": 4, "macos": 4, "windows": 2}
 
+# Static matrix: chhota kam khaye, bada zyada (user philosophy).
+# True = full, False = nahi, "capped"/"cron" = limited mode.
+MATRIX = {
+    "termux": {"docker": False, "lsp_server": False, "daemon_service": "cron",
+               "big_index": "capped", "voice_mic": "termux-api",
+               "parallel": 1, "note": "halka mode: concurrency 1, index cap, cron-jobs"},
+    "linux": {"docker": "if-installed", "lsp_server": "if-installed",
+              "daemon_service": "systemd", "big_index": True, "voice_mic": False,
+              "parallel": 4, "note": "full mode"},
+    "macos": {"docker": "if-installed", "lsp_server": "if-installed",
+              "daemon_service": "launchd-manual", "big_index": True, "voice_mic": False,
+              "parallel": 4, "note": "full mode (docker desktop chahiye)"},
+    "windows": {"docker": "if-installed", "lsp_server": "if-installed",
+                "daemon_service": "task-scheduler-manual", "big_index": True,
+                "voice_mic": False, "parallel": 2,
+                "note": "LSP stdio-select nahi — diagnostics py_compile fallback"},
+}
+
+def probe():
+    """Runtime binary probes (actual, not assumed). Returns {name: bool}."""
+    import shutil
+    out = {}
+    for name in ("docker", "gh", "ollama", "pyright", "pyright-langserver",
+                 "termux-api", "termux-job-scheduler", "pip-audit", "node"):
+        try:
+            out[name] = shutil.which(name) is not None
+        except Exception:
+            out[name] = False
+    return out
+
+def capabilities():
+    """Static matrix + live probes merge. TUI /platform aur startup ke liye."""
+    p = detect()
+    caps = dict(MATRIX.get(p, MATRIX["linux"]))
+    caps["platform"] = p
+    caps["probes"] = probe()
+    caps["docker"] = bool(caps["docker"] == True or
+                          (caps["docker"] == "if-installed" and caps["probes"]["docker"]))
+    return caps
+
 def data_dir():
     p = detect()
     if p == "termux":

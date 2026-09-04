@@ -43,8 +43,13 @@ def index_path(path, root="."):
                 except OSError:
                     pass
     c = _db()
+    try:
+        from ..platform_adapt import detect as _plat
+        _cap = 60 if _plat() == "termux" else 200  # phone pe halka index
+    except Exception:
+        _cap = 200
     n = 0
-    for fp in targets[:200]:
+    for fp in targets[:_cap]:
         try:
             with open(fp, encoding="utf-8", errors="replace") as f:
                 txt = f.read(100000)

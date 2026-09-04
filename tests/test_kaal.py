@@ -1193,6 +1193,18 @@ class TestPaletteSetup(unittest.TestCase):
         cmds2 = filter_commands("")
         self.assertGreater(len(cmds2), 30)
 
+    def test_platform_matrix(self):
+        from kaal import platform_adapt as pa
+        self.assertIn(pa.detect(), ("termux", "linux", "macos", "windows"))
+        caps = pa.capabilities()
+        self.assertEqual(caps["platform"], pa.detect())
+        self.assertIn("docker", caps)
+        self.assertIsInstance(caps["probes"], dict)
+        self.assertIn("ollama", caps["probes"])
+        if pa.detect() == "termux":
+            self.assertEqual(caps["parallel"], 1)
+            self.assertFalse(caps["docker"])
+
     def test_setup_helpers(self):
         from kaal.tui import setup as su
         self.assertIn("openai", su.PROVIDERS)

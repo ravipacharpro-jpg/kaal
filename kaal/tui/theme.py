@@ -13,7 +13,7 @@ NAME = "kaal"
 VERSION = "v0.6.0"
 TAGLINE = "autonomous agent · ahead of time"
 
-FOOTER_HINT = ("[dim]/palette /endpoints /budget /memory /user /thread /trace /tree /agents /key /model /effort /ollama /schedule "
+FOOTER_HINT = ("[dim]/palette /endpoints /platform /budget /memory /user /thread /trace /tree /agents /key /model /effort /ollama /schedule "
                "/perm /plan /approve /review /research /bg /fresh /ship /autopilot /cache /comment-zh /reflect /recipe /plugin /voice /checkpoint /rewind /export /quit [dim]· seedha task likho[/]")
 
 def load_accent():

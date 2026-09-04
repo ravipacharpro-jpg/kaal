@@ -59,6 +59,15 @@ kaal --mode rpc          # JSON-RPC stdio bridge (IDE integration: prompt/stream
 python3 benchmarks/swe_run.py dataset.json --out results.json  # SWE-style grading
 ```
 - **Platform:** Termux/Linux/macOS/Windows, storage quota + auto-clean, `--resume/--history`
+  - Philosophy: chhota kam khaye, bada zyada — har platform apni aukat me chalta hai (`/platform` se dekho)
+  - | capability | Termux | PC (Linux/macOS/Windows) |
+    |---|---|---|
+    | parallel agents | 1 (sequential) | 2–4 |
+    | docker sandbox | nahi | binary mile to |
+    | LSP server | nahi (py_compile fallback) | binary mile to |
+    | daemon | cron/JobScheduler | systemd/launchd/manual |
+    | code index | capped (60 files) | full (200 files) |
+    | voice mic | Termux:API se | nahi |
 
 ## Structure
 ```

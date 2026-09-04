@@ -344,6 +344,24 @@ def main_loop():
         if task == "/endpoints":
             show_endpoints()
             continue
+        if task == "/platform":
+            from ..platform_adapt import capabilities as _caps
+            caps = _caps()
+            t = Table(show_header=True, header_style=f"bold {th.ACCENT}",
+                      border_style="dim", box=None)
+            t.add_column("Capability", style="bold")
+            t.add_column("Status", justify="right")
+            for k in ("docker", "lsp_server", "daemon_service", "big_index",
+                      "voice_mic", "parallel", "note"):
+                v = caps.get(k, "?")
+                mark = "[green]on[/]" if v is True else ("[red]off[/]" if v is False
+                                                        else f"[yellow]{v}[/]")
+                t.add_row(k, mark)
+            probes = ", ".join(f"{k}={'✓' if v else '✗'}" for k, v in caps["probes"].items())
+            console.print(Panel(t, title=f" Platform: {caps['platform']}",
+                                border_style=th.ACCENT, padding=(0, 1)))
+            console.print(f"[dim]probes: {probes}[/]")
+            continue
         if task == "/theme":
             from . import theme as _thm
             console.print(f"[dim]Accent: {_thm.ACCENT} — use: /theme cyan|green|magenta|yellow[/]")
