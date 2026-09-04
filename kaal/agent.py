@@ -232,9 +232,6 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
                 pass
         return f" [{td.get('agent','general')}] {td['title'][:40]}: {res[:80]}", False
 
-    risky = any(("delete" in t["title"].lower() or "edit" in t["title"].lower()
-                 or "write" in t["title"].lower() or "commit" in t["title"].lower())
-                for t in todos)
     try:
         from .platform_adapt import CONCURRENCY, detect as _plat
         workers = CONCURRENCY.get(_plat(), 1)
@@ -242,15 +239,14 @@ def run_task(task, live_cb=None, ask_cb=None, multi=None, on_token=None,
         workers = 1
     if saver_active():
         workers = 1  # saver mode: sequential tools (SKILL 6 cost opt)
-    if use_multi and workers > 1 and len(todos) > 1 and not risky:
+    if use_multi and workers > 1 and len(todos) > 1:
         if live_cb:
-            live_cb(f"{len(todos)} agents parallel chal rahe hain")
-        from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=min(workers, len(todos))) as ex:
-            results = list(ex.map(_one, todos))
-        for line, stop in results:
+            live_cb(f"{len(todos)} agents graph me (writes sequential, reads parallel)")
+        from .parallel import attach_needs, run_graph
+        attach_needs(todos)
+        for line in run_graph(todos, _one, max_workers=workers, cancel=cancel):
             out.append(line)
-            if stop:
+            if line in ("cancelled", " delete cancel"):
                 break
     else:
         for i, td in enumerate(todos):

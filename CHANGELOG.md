@@ -1,6 +1,9 @@
 # Kaal Changelog
 
-## v0.6.0 — universal-skills batch
+## v0.6.0 — parallel-engine batch (PC track)
+- Added: task-graph engine (`kaal/parallel.py` — DAG levels, risky-chain, ordered aggregate, cancel)
+- Legacy multi-path ab graph engine use karta hai (writes kabhi parallel nahi)
+- Worktree isolation v2 roadmap (cwd plumbing chahiye)
 - Added: Skill protocol core (`skills/base.py` — register/hooks/tools-merge, fail-soft)
 - Added: prompt-cache (SHA-256 SQLite, TTL 24h, try_chat/try_llm wired, `/cache`)
 - Added: zh-comment (`/comment-zh`, code-unchanged verifier)

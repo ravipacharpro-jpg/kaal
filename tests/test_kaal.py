@@ -921,6 +921,50 @@ class TestKeyHealth(unittest.TestCase):
         self.assertEqual(rt.get_github_token(), "ghp-testtoken1234567890abcd")
 
 
+class TestParallelEngine(unittest.TestCase):
+    """PC-track DAG engine: risky chain, levels, order, stop, cancel."""
+
+    def test_auto_graph_chains_writes(self):
+        from kaal import parallel as pl
+        jobs = pl.auto_graph([("file padho x", "researcher"),
+                              ("file me edit karo", "coder"),
+                              ("github check karo", "github_specialist")])
+        self.assertEqual([j["needs"] for j in jobs], [[], ["j0"], ["j1"]])
+        self.assertTrue(pl.is_risky("file me edit karo"))
+        self.assertFalse(pl.is_risky("file padho x"))
+
+    def test_levels_order_and_cycle(self):
+        from kaal import parallel as pl
+        jobs = [{"id": "a", "needs": []}, {"id": "b", "needs": ["a"]},
+                {"id": "c", "needs": ["a"]}]
+        lvls = pl.levels(jobs)
+        self.assertEqual([[j["id"] for j in l] for l in lvls], [["a"], ["b", "c"]])
+        cyc = [{"id": "a", "needs": ["b"]}, {"id": "b", "needs": ["a"]}]
+        self.assertEqual(len(pl.levels(cyc)), 2)  # safe fallback
+
+    def test_run_graph_order_stop_cancel(self):
+        import threading
+        from kaal import parallel as pl
+        seen = []
+        jobs = pl.auto_graph([("r1 padho", "researcher"), ("r2 padho", "researcher")])
+        out = pl.run_graph(jobs, lambda j: (seen.append(j["id"]), False)[0] or (j["id"], False),
+                           max_workers=2)
+        self.assertEqual(set(out), {"j0", "j1"})
+        self.assertEqual(set(seen), {"j0", "j1"})
+        out2 = pl.run_graph(jobs, lambda j: ("stop!", True), max_workers=2)
+        self.assertEqual(out2, ["stop!"])
+        ev = threading.Event()
+        ev.set()
+        self.assertEqual(pl.run_graph(jobs, lambda j: ("x", False), cancel=ev), [])
+
+    def test_attach_needs_inplace(self):
+        from kaal import parallel as pl
+        todos = [{"title": "a padho", "agent": "researcher"},
+                 {"title": "b me edit karo", "agent": "coder"}]
+        self.assertIs(pl.attach_needs(todos), todos)
+        self.assertEqual(todos[1]["needs"], ["j0"])
+
+
 class TestUniversalSkills(unittest.TestCase):
     """prompt.cpp universal skills: base registry, cache, zh-verify, reflect, CN, saver."""
 
