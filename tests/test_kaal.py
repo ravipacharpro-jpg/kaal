@@ -565,5 +565,58 @@ class TestWishlistBatch(unittest.TestCase):
         self.assertIn("galat", rt.set_effort("ultra"))
 
 
+class TestWishlistBatch2(unittest.TestCase):
+    """prompt.cpp mega-batch: workflows, scoped perms, crypto-fallback, lint, search."""
+
+    def test_workflows_pure(self):
+        from kaal import workflows as wf
+        self.assertEqual(wf.fresh_branch("Fix Login BUG!!"), "kaal/fix-login-bug")
+        self.assertEqual(len(wf.fresh_plan("x")), 5)
+        self.assertEqual(wf.autopilot_pick([{"task": "a"}, {"task": "b"}, {}], 2), ["a", "b"])
+        self.assertTrue(wf.ship_message("my plan\nline2").startswith("my plan"))
+
+    def test_scoped_perms(self):
+        from kaal import config_store as cs
+        self.assertEqual(cs.get_perm("delete_files"), "ask")
+        self.assertEqual(cs.get_perm("delete_files:./tmp"), "ask")
+        self.assertEqual(cs.get_perm("no_such_op"), "ask")
+        self.assertEqual(cs.get_perm("secrets"), "ask")
+
+    def test_vault_crypto_fallback(self):
+        from kaal import vault_crypto as vc
+        d = {"providers": {"openai": [{"key": "sk-x"}]}}
+        self.assertEqual(vc.decrypt_payload(d), d)  # legacy dict passthrough
+        ok, _ = vc.encrypt_dict(d)
+        if not vc.available():
+            self.assertFalse(ok)  # Termux: plaintext+0600 path
+            self.assertEqual(vc.decrypt_payload("ENC1:xxx"), {})
+
+    def test_lint_file(self):
+        from kaal.skills import project as pj
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "ok.py")
+            with open(p, "w") as fh:
+                fh.write("x = 1\n")
+            self.assertIn("OK", pj.lint_file(p))
+            b = os.path.join(d, "bad.py")
+            with open(b, "w") as fh:
+                fh.write("def broken(:\n")
+            self.assertIn("FAIL", pj.lint_file(b))
+            self.assertIn("n/a", pj.lint_file(os.path.join(d, "nope.py")))
+
+    def test_memory_search(self):
+        from kaal.memory import store as ms
+        ms.save("test daal bhaat khana", "swadisht thali summary")
+        rows = ms.search("daal bhaat")
+        self.assertTrue(any("daal" in (t + s) for t, s in rows))
+        self.assertEqual(ms.search("zzz-no-match-zzz-123"), [])
+
+    def test_dep_audit_runs(self):
+        from kaal.skills import dev
+        out = dev.dep_audit()
+        self.assertIn("rich", out)
+
+
 if __name__ == "__main__":
     unittest.main()

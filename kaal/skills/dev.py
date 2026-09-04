@@ -64,3 +64,32 @@ def pr_open(title, body="", base="main"):
         return out if r.returncode == 0 else f"PR fail: {out[:200]}"
     except Exception as e:
         return f"Error: {e}"[:200]
+
+def dep_audit():
+    """requirements.txt ke packages ke installed versions dikhao.
+    Full CVE scan nahi (pip-audit nahi hai) — `pip install pip-audit` ho to wahi chalao."""
+    if shutil.which("pip-audit"):
+        try:
+            r = subprocess.run(["pip-audit"], capture_output=True, text=True, timeout=120)
+            return (r.stdout + r.stderr).strip()[:1000] or "pip-audit: koi issue nahi"
+        except Exception as e:
+            return f"pip-audit fail: {e}"[:200]
+    try:
+        from importlib import metadata as _md
+    except ImportError:
+        return "importlib.metadata nahi — Python 3.8+ chahiye"
+    req = os.path.join(os.path.dirname(__file__), "..", "..", "requirements.txt")
+    try:
+        with open(os.path.abspath(req), encoding="utf-8") as f:
+            wants = [l.strip().split(">")[0].split("=")[0].split("<")[0].strip()
+                     for l in f if l.strip() and not l.startswith("#")]
+    except OSError:
+        return "requirements.txt nahi mili"
+    out = []
+    for name in wants:
+        try:
+            out.append(f"{name}=={_md.version(name)}")
+        except Exception:
+            out.append(f"{name}: installed nahi!")
+    out.append("(pip-audit nahi mila — PC pe `pip install pip-audit` karo full CVE scan ke liye)")
+    return "\n".join(out)[:1000]

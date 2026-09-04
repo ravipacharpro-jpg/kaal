@@ -78,9 +78,32 @@ def _load_json(path, default):
     except Exception:
         return default
 
+def _load_vault():
+    """Vault padho: ENC1-encrypted (cryptography ho to) ya legacy plaintext JSON.
+    Lib nahi to encrypted vault unreadable — {} (user ko notice milta hai)."""
+    try:
+        with open(VAULT, encoding="utf-8") as f:
+            raw = f.read()
+    except Exception:
+        return {"providers": {}}
+    try:
+        d = json.loads(raw)
+        if isinstance(d, dict):
+            return d
+    except Exception:
+        pass
+    try:
+        from .. import vault_crypto as _vc
+        d = _vc.decrypt_payload(raw.strip())
+        if isinstance(d, dict) and d:
+            return d
+    except Exception:
+        pass
+    return {"providers": {}}
+
 def list_endpoints():
     """Sab endpoints + user vault keys merge karke do. Summary only."""
-    user = _load_json(VAULT, {"providers": {}})
+    user = _load_vault()
     eps = [dict(e) for e in BUILTIN_FREE]
     for prov, keys in user.get("providers", {}).items():
         if isinstance(keys, list):
@@ -231,7 +254,7 @@ def try_chat(messages, max_tokens_note=200, model=None):
         pass
     from .llm import chat
     import time as _t
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
@@ -274,7 +297,7 @@ def try_chat_stream(messages, model=None, on_token=None, max_tokens_note=200):
         pass
     from .llm import chat_stream
     import time as _t
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
@@ -313,7 +336,7 @@ def _cool(key, secs=0):
     return _COOL.get(fp, 0)
 
 def has_keys():
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     for keys in vault.get("providers", {}).values():
         if isinstance(keys, list) and any((k.get("key") if isinstance(k, dict) else k) for k in keys):
             return True
@@ -335,7 +358,7 @@ def try_llm(prompt, max_tokens_note=100):
     Key nahi to (rule-based, '') — agent local skills se kaam karta hai."""
     from .llm import chat
     import time as _t
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
@@ -363,7 +386,7 @@ def try_vision(prompt, b64, mime="image/png"):
     """Image describe via vault keys (vision models). Returns (name, text)."""
     from .llm import chat_vision
     import time as _t
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     for prov, keys in vault.get("providers", {}).items():
         url = PROVIDER_URLS.get(prov)
         if not url or not isinstance(keys, list):
@@ -397,14 +420,27 @@ def estimate(task, steps=3):
     return f"≈{toks} tokens{flag}"
 
 def add_user_key(provider, key):
-    """User ki unlimited API add karo — same provider ki multiple allowed."""
+    """User ki unlimited API add karo — same provider ki multiple allowed.
+    cryptography mili to AES-encrypted vault, nahi to plaintext + 0600."""
     os.makedirs(CONFIG_DIR, exist_ok=True)
-    vault = _load_json(VAULT, {"providers": {}})
+    vault = _load_vault()
     vault.setdefault("providers", {}).setdefault(provider, []).append({"key": key})
-    with open(VAULT, "w", encoding="utf-8") as f:
-        json.dump(vault, f, indent=2)
+    mode = "plaintext+0600"
     try:
-        os.chmod(VAULT, 0o600)  # keys plaintext hain — kam se kam owner-only
+        from .. import vault_crypto as _vc
+        ok, payload = _vc.encrypt_dict(vault)
+        if ok:
+            with open(VAULT, "w", encoding="utf-8") as f:
+                f.write(payload)
+            mode = "encrypted"
+        else:
+            raise RuntimeError("no-crypto")
+    except Exception:
+        with open(VAULT, "w", encoding="utf-8") as f:
+            json.dump(vault, f, indent=2)
+    try:
+        os.chmod(VAULT, 0o600)
     except OSError:
         pass
-    return f"{provider} key add ho gayi ({len(vault['providers'][provider])} total)"
+    n = len(vault['providers'][provider])
+    return f"{provider} key add ho gayi ({n} total, {mode})"

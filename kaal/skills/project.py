@@ -31,6 +31,33 @@ def describe(root="."):
         return "Project type pata nahi — test command batao"
     return f"Project: {d['type']} | test: {d['test']} | lint: {d['lint']}"
 
+def lint_file(path):
+    """PC pe pyright ho to wahi, nahi to py_compile, kuch nahi to 'n/a'.
+    Termux-safe: binary absent to graceful fallback, crash nahi."""
+    import shutil, subprocess, sys
+    p = os.path.abspath(os.path.expanduser(path))
+    if not os.path.isfile(p):
+        return "n/a (file nahi mili)"
+    if p.endswith(".py"):
+        if shutil.which("pyright"):
+            try:
+                r = subprocess.run(["pyright", "--outputjson", p], capture_output=True,
+                                   text=True, timeout=120)
+                import json as _js
+                d = _js.loads(r.stdout or "{}").get("summary", {})
+                return (f"pyright: {d.get('errorCount', '?')} errors, "
+                        f"{d.get('warningCount', '?')} warnings")
+            except Exception as e:
+                return f"pyright fail: {e}"[:120]
+        try:
+            import py_compile
+            py_compile.compile(p, doraise=True)
+            return "py_compile OK (pyright nahi mila — PC pe `npm i -g pyright` karo)"
+        except Exception as e:
+            return f"py_compile FAIL: {e}"[:200]
+    d = detect(os.path.dirname(p))
+    return f"lint: {d['lint'] or 'n/a'} ({d['type']})"
+
 CTX_FILES = ("AGENTS.md", "CLAUDE.md")
 
 def project_context(root=".", max_chars=1500):

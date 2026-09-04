@@ -21,6 +21,15 @@ def recent(n=5):
     c.close()
     return rows
 
+def search(query, n=5):
+    """Past sessions me keyword search (LIKE, local). Vector search nahi — zero-dep."""
+    q = f"%{query[:80]}%"
+    c = _db()
+    rows = c.execute("SELECT task,summary FROM sessions WHERE task LIKE ? OR summary LIKE ?"
+                     " ORDER BY ts DESC LIMIT ?", (q, q, n)).fetchall()
+    c.close()
+    return rows
+
 def export_md(path="", n=20):
     """Session transcript markdown me (OpenCode share-style, local file)."""
     import datetime

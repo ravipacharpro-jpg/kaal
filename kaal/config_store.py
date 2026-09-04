@@ -49,7 +49,13 @@ def get_budget():
     return int(c.get("daily_budget", 5000)), int(c.get("per_task_budget", 500))
 
 def get_perm(op):
-    return get_all()["permissions"].get(op, "ask")
+    """Scoped match: 'delete_files:./x' pehle exact, phir 'delete_files', nahi to 'ask'.
+    Per-directory allow/deny bina global rule tode."""
+    perms = get_all()["permissions"]
+    if op in perms and isinstance(perms[op], str):
+        return perms[op]
+    base = op.split(":", 1)[0]
+    return perms.get(base, "ask")
 
 def set_perm(op, val):
     d = _load("permissions")

@@ -34,6 +34,11 @@ from .brand import brand, agent_name
 console = Console()
 
 
+def ask_main(q):
+    """TUI permission prompt (diff-aware color). /ship jaise commands ke liye."""
+    return Confirm.ask(f"[bold yellow]{q[:300]}[/]")
+
+
 def _status_strip():
     parts = []
     try:
@@ -577,6 +582,50 @@ def main_loop():
                 continue
             res = _run_with_live(f"explore karo: {parts[1].strip()}")
             show_result(res)
+            continue
+        if task.startswith("/fresh"):
+            from .. import workflows as _wf
+            parts = task.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                console.print("[dim]Use: /fresh <ticket> — branch + 5-phase plan cycle[/]")
+                continue
+            ticket = parts[1].strip()
+            br = _wf.fresh_branch(ticket)
+            from ..skills import git as _gg
+            code, out = _gg._git(["checkout", "-b", br])
+            console.print(f"[green]Branch: {br}[/] [dim]{out[:100]}[/]" if code == 0
+                          else f"[yellow]{out[:150]}[/]")
+            for st in _wf.fresh_plan(ticket):
+                console.print(f"  [dim]→ {st[:90]}[/]")
+            console.print("[dim]Execute ke liye task likho ya /approve ke baad plan chalao.[/]")
+            continue
+        if task.startswith("/ship"):
+            from .. import workflows as _wf2
+            from ..skills import git as _gg2
+            from ..planner import read as _pread
+            parts = task.split(" ", 1)
+            msg = _wf2.ship_message(parts[1] if len(parts) > 1 else _pread())
+            console.print(f"[green]{_gg2.auto_commit(msg, ask_cb=ask_main)}[/]")
+            code, out = _gg2._git(["push", "-u", "origin", "HEAD"])
+            console.print(f"[green]Pushed[/] [dim]{out[:120]}[/]" if code == 0
+                          else f"[yellow]Push nahi hua: {out[:150]}[/]")
+            continue
+        if task == "/autopilot":
+            from .. import workflows as _wf3
+            from ..scheduler import due as _due, mark_done as _done
+            jobs = _due()
+            picks = _wf3.autopilot_pick(jobs)
+            if not picks:
+                console.print("[dim]Koi due job nahi — /schedule se add karo.[/]")
+                continue
+            for t in picks:
+                console.print(f"[bold]Autopilot:[/] {t[:70]}")
+                res = _run_with_live(t)
+                show_result(res)
+                _done(t)
+                if res.get("status") == "denied":
+                    console.print("[yellow]Permission deny — autopilot roka.[/]")
+                    break
             continue
         res = _run_with_live(task)
         show_result(res)
