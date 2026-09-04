@@ -25,3 +25,7 @@ config/kaal.pid
 logs/trace.jsonl
 memory/reflection_*.md
 config/.onboarded
+config/tui.json
+config/permissions.json
+config/economy.json
+config/storage.json
